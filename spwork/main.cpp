@@ -1659,3 +1659,5 @@ void take_pic()
 		}
 	}	
 }
+//test 
+
