@@ -39,7 +39,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Users\祐喜\Documents\Visual Studio 2013\Projects\spwork\spwork\microsoft_translator;C:\Program Files %28x86%29\Tesseract-OCR\include\tesseract;C:\Program Files %28x86%29\Tesseract-OCR\include\leptonica;C:\Program Files %28x86%29\Tesseract-OCR\include;C:\dev\opencv2411\build\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\dev\microsoft_translator;C:\Program Files %28x86%29\Tesseract-OCR\include\tesseract;C:\Program Files %28x86%29\Tesseract-OCR\include\leptonica;C:\Program Files %28x86%29\Tesseract-OCR\include;C:\dev\opencv2411\build\include;$(IncludePath)</IncludePath>
     <LibraryPath>C:\dev\opencv2411\build\x86\vc12\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
