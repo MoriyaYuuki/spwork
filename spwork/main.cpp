@@ -1660,4 +1660,4 @@ void take_pic()
 	}	
 }
 //test 
-
+//test
