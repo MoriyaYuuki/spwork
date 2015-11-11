@@ -201,6 +201,7 @@ int main()
 			//“ñ’l‰»
 			IplImage *threshold_img = cvCreateImage(cvGetSize(rough_cut_img), IPL_DEPTH_8U, 1);
 			threshold(rough_cut_img, threshold_img);
+			adaptiveThreshold((Mat)rough_cut_img, (Mat)threshold_img, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
 			cv::imwrite("threshold.png", (Mat)threshold_img);
 			//cvNamedWindow("rough_th");
 			//cvShowImage("rough_th", threshold_img);
