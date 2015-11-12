@@ -105,7 +105,7 @@ int main()
 {
 	//動作確認用関数
 	//check_OCR();//画像処理部
-	//testAR();
+	testAR();
 	//take_pic();
 	//Calibrate();
 
@@ -1251,6 +1251,23 @@ void testAR()
 
 		}
 	}
+	//矢印の基本座標を求める。
+	CvMat *arrow_srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//元の3次元座標  
+	CvMat *arrow_dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//画面に投影したときの2次元座標  
+	for (i = 0; i< 2; i++)
+	{
+		switch (i)
+		{
+		case 0: arrow_srcPoints3D->data.fl[0] = 10;
+			arrow_srcPoints3D->data.fl[1] = 10;
+			arrow_srcPoints3D->data.fl[2] = 0;
+			break;
+		case 1: arrow_srcPoints3D->data.fl[0 + i * 3] = 10;
+			arrow_srcPoints3D->data.fl[1 + i * 3] = -100;
+			arrow_srcPoints3D->data.fl[2 + i * 3] = 0;
+			break;
+		}
+	}
 
 	///軸の準備　ここまで  
 	//////////////////////////////////// 
@@ -1310,7 +1327,7 @@ void testAR()
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, cap_size.width);
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, cap_size.height);
 
-	cap.open(1);
+	cap.open(0);
 	if (!cap.isOpened()) {
 		cout << "カメラの初期化に失敗しました" << endl;
 		//return -1;
@@ -1475,15 +1492,18 @@ void testAR()
 						//cvPutText(&img,"1", cvPoint((int)src_pnt[1].x,(int)src_pnt[1].y), &dfont, CV_RGB(255, 0, 255)); 
 						//マーカーのイメージ上での座標を設定。  
 						cvInitMatHeader(&image_points, 4, 1, CV_32FC2, src_pnt);
+						//矢印のイメージ上での座標を設定
+
 						//マーカーの基本となる座標を設定  
 						cvInitMatHeader(&object_points, 4, 3, CV_32FC1, baseMarkerPoints);
+						
 						//カメラの内部定数(intrinsticとdistortion)から、rotationとtranslationを求める   
 						cvFindExtrinsicCameraParams2(&object_points, &image_points, intrinsic, distortion, rotation, translation);
 
 						
 						//求めたものを使用して、現実空間上の座標が画面上だとどの位置に来るかを計算  
 						cvProjectPoints2(srcPoints3D, rotation, translation, intrinsic, distortion, dstPoints2D);
-
+						cvProjectPoints2(arrow_srcPoints3D, rotation, translation, intrinsic, distortion, arrow_dstPoints2D);
 						//軸を描画  
 						CvPoint startpoint;
 						CvPoint endpoint;
@@ -1507,7 +1527,11 @@ void testAR()
 								cvPutText(&img, " Z", endpoint, &axisfont, CV_RGB(0, 0, 255));
 							}
 						}
-	
+						CvPoint arrow_startPoint;
+						CvPoint arrow_endPoint;
+						arrow_startPoint= cvPoint((int)arrow_dstPoints2D->data.fl[0], (int)arrow_dstPoints2D->data.fl[1]);
+						arrow_endPoint = cvPoint((int)arrow_dstPoints2D->data.fl[2], (int)arrow_dstPoints2D->data.fl[3]);
+						arrowedLine((Mat)&img, arrow_startPoint, arrow_endPoint, cv::Scalar(200, 0, 0), 5, CV_AA);
 					}
 				}
 			}
