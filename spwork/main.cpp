@@ -90,6 +90,7 @@ void check_OCR();
 void testAR();
 int Calibrate();
 void take_pic();
+void ARtracking(Mat in_frame, Point *Notice_coordinates);
 
 /*時間の取得*/
 time_t now = time(NULL);
@@ -101,13 +102,38 @@ Mat meanshift_hist;
 track_color_data data = { 0 };
 float meanshift_hranges[] = { 0, 180 };
 
+/*AR用*/
+CvMat *intrinsic, *distortion;
+CvMat *rotation = cvCreateMat(1, 3, CV_32FC1);
+CvMat *translation = cvCreateMat(1, 3, CV_32FC1);
+IplImage * mask0 = cvLoadImage("mask0deg.bmp", 0);
+IplImage * mask90 = cvLoadImage("mask90deg.bmp", 0);
+IplImage * mask180 = cvLoadImage("mask180deg.bmp", 0);
+IplImage * mask270 = cvLoadImage("mask270deg.bmp", 0);
+IplImage * tempmask = cvCloneImage(mask0);//作業用  
+
 int main()
 {
 	//動作確認用関数
 	//check_OCR();//画像処理部
-	testAR();
+	//testAR();
 	//take_pic();
 	//Calibrate();
+
+	//ARの初期設定
+	CvFileStorage *fs;
+	CvFileNode *param;
+
+	fs = cvOpenFileStorage("camera.xml", 0, CV_STORAGE_READ);
+	param = cvGetFileNodeByName(fs, NULL, "intrinsic");
+	intrinsic = (CvMat *)cvRead(fs, param);
+	param = cvGetFileNodeByName(fs, NULL, "distortion");
+	distortion = (CvMat *)cvRead(fs, param);
+	cvReleaseFileStorage(&fs);
+
+	CvMat object_points;
+	CvMat image_points;
+	CvMat point_counts;
 
 	cv::VideoCapture cap;
 	cv::Size cap_size(640, 480);
@@ -128,11 +154,12 @@ int main()
 	int ch;
 	char str[100];
 	// 最初に見つかったカメラを開く
-	cap.open(1);
+	cap.open(0);
 	if (!cap.isOpened()) {
 		cout << "カメラの初期化に失敗しました" << endl;
 		return -1;
 	}
+
 	// 動画保存設定
 	int fps = 8;
 	//cvGetCaptureProperty((CvCapture *)cap, CV_CAP_PROP_FPS);
@@ -160,13 +187,15 @@ int main()
 		if (original_frame.empty()) break;
 		original_frame.copyTo(copy_frame);
 		//色追跡
-		meanShift(copy_frame,Notice_coordinates);
+		//meanShift(copy_frame,Notice_coordinates);
+		//ARマーカー追跡
+		ARtracking(copy_frame, Notice_coordinates);
 		if (abs(Notice_coordinates->x - preNotice_coordinates->x) < 5  && abs(Notice_coordinates->y - preNotice_coordinates->y) <5){
 			stopCount++;
 		}
 		/*cout << "stopCount = " <<stopCount << endl;
 		cout << "座標x" << Notice_coordinates->x << "座標y" << Notice_coordinates->y << endl;*/
-		if (stopCount ==20 ){
+		if (stopCount ==100 ){
 			//グレースケール化
 			cv::cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
 			cv::imwrite("original.png", original_frame);
@@ -1507,26 +1536,26 @@ void testAR()
 						//軸を描画  
 						CvPoint startpoint;
 						CvPoint endpoint;
-						for (int as = 0; as < 12;as++) {
-							cout <<as<<"="<< dstPoints2D->data.fl[as] << endl;
-						}
+						//for (int as = 0; as < 12;as++) {
+						//	cout <<as<<"="<< dstPoints2D->data.fl[as] << endl;
+						//}
 					
-						startpoint = cvPoint((int)dstPoints2D -> data.fl[0], (int)dstPoints2D -> data.fl[1]);
-						for (j = 1; j< 4; j++) {
-							endpoint = cvPoint((int)dstPoints2D -> data.fl[(j)* 2], (int)dstPoints2D -> data.fl[1 + (j)* 2]);
-							if (j == 1){
-								cvLine(&img, startpoint, endpoint, CV_RGB(255, 0, 0), 2, 8, 0);
-								cvPutText(&img, " X" , endpoint, &axisfont, CV_RGB(255, 0, 0));
-							}
-							if (j == 2){
-								cvLine(&img, startpoint, endpoint, CV_RGB(0, 255, 0), 2, 8, 0);
-								cvPutText(&img, " Y", endpoint, &axisfont, CV_RGB(0, 255, 0));
-							}
-							if (j == 3){
-								cvLine(&img, startpoint, endpoint, CV_RGB(0, 0, 255), 2, 8, 0);
-								cvPutText(&img, " Z", endpoint, &axisfont, CV_RGB(0, 0, 255));
-							}
-						}
+						//startpoint = cvPoint((int)dstPoints2D -> data.fl[0], (int)dstPoints2D -> data.fl[1]);
+						//for (j = 1; j< 4; j++) {
+						//	endpoint = cvPoint((int)dstPoints2D -> data.fl[(j)* 2], (int)dstPoints2D -> data.fl[1 + (j)* 2]);
+						//	if (j == 1){
+						//		cvLine(&img, startpoint, endpoint, CV_RGB(255, 0, 0), 2, 8, 0);
+						//		cvPutText(&img, " X" , endpoint, &axisfont, CV_RGB(255, 0, 0));
+						//	}
+						//	if (j == 2){
+						//		cvLine(&img, startpoint, endpoint, CV_RGB(0, 255, 0), 2, 8, 0);
+						//		cvPutText(&img, " Y", endpoint, &axisfont, CV_RGB(0, 255, 0));
+						//	}
+						//	if (j == 3){
+						//		cvLine(&img, startpoint, endpoint, CV_RGB(0, 0, 255), 2, 8, 0);
+						//		cvPutText(&img, " Z", endpoint, &axisfont, CV_RGB(0, 0, 255));
+						//	}
+						//}
 						CvPoint arrow_startPoint;
 						CvPoint arrow_endPoint;
 						arrow_startPoint= cvPoint((int)arrow_dstPoints2D->data.fl[0], (int)arrow_dstPoints2D->data.fl[1]);
@@ -1684,6 +1713,287 @@ void take_pic()
 		}
 	}	
 }
-//test 
-//test
-//test
+
+void ARtracking(Mat in_frame, Point *Notice_coordinates)
+{
+	int cap_count = 0;
+	///////////////////////////////////////////  
+	//画像に表示させる立方体の準備。  
+
+	#define MARKER_SIZE (20)       /* マーカーの外側の1辺のサイズ[mm] */  
+	int i, j, k;
+
+	//立方体生成用  
+	CvMat *srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//元の3次元座標  
+	CvMat *dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//画面に投影したときの2次元座標  
+	CvPoint2D32f *corners = (CvPoint2D32f *)cvAlloc(sizeof (CvPoint2D32f)* 4);//四角形  
+
+	CvMat object_points;
+	CvMat image_points;
+	CvMat point_counts;
+
+	CvPoint3D32f baseMarkerPoints[4];
+	//四角が物理空間上ではどの座標になるかを指定する。  
+	//コーナー      実際の座標(mm)  
+	//   X   Y     X    Y    
+	//   0   0   = 0    0  
+	//   0   1   = 0    20  
+	//   1   0   = 20   0  
+	baseMarkerPoints[0].x = (float)0 * MARKER_SIZE;
+	baseMarkerPoints[0].y = (float)0 * MARKER_SIZE;
+	baseMarkerPoints[0].z = 0.0;
+
+	baseMarkerPoints[1].x = (float)0 * MARKER_SIZE;
+	baseMarkerPoints[1].y = (float)1 * MARKER_SIZE;
+	baseMarkerPoints[1].z = 0.0;
+
+	baseMarkerPoints[2].x = (float)1 * MARKER_SIZE;
+	baseMarkerPoints[2].y = (float)1 * MARKER_SIZE;
+	baseMarkerPoints[2].z = 0.0;
+
+	baseMarkerPoints[3].x = (float)1 * MARKER_SIZE;
+	baseMarkerPoints[3].y = (float)0 * MARKER_SIZE;
+	baseMarkerPoints[3].z = 0.0;
+
+	//軸の基本座標を求める。  
+	for (i = 0; i< 4; i++)
+	{
+		switch (i)
+		{
+		case 0: srcPoints3D->data.fl[0] = 0;
+			srcPoints3D->data.fl[1] = 0;
+			srcPoints3D->data.fl[2] = 0;
+			break;
+		case 1: srcPoints3D->data.fl[0 + i * 3] = (float)MARKER_SIZE;
+			srcPoints3D->data.fl[1 + i * 3] = 0;
+			srcPoints3D->data.fl[2 + i * 3] = 0;
+			break;
+		case 2: srcPoints3D->data.fl[0 + i * 3] = 0;
+			srcPoints3D->data.fl[1 + i * 3] = (float)MARKER_SIZE;
+			srcPoints3D->data.fl[2 + i * 3] = 0;
+			break;
+		case 3: srcPoints3D->data.fl[0 + i * 3] = 0;
+			srcPoints3D->data.fl[1 + i * 3] = 0;
+			srcPoints3D->data.fl[2 + i * 3] = -(float)MARKER_SIZE;;
+			break;
+
+		}
+	}
+	//矢印の基本座標を求める。
+	CvMat *arrow_srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//元の3次元座標  
+	CvMat *arrow_dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//画面に投影したときの2次元座標  
+	for (i = 0; i< 2; i++)
+	{
+		switch (i)
+		{
+		case 0: arrow_srcPoints3D->data.fl[0] = 10;
+			arrow_srcPoints3D->data.fl[1] = 10;
+			arrow_srcPoints3D->data.fl[2] = 0;
+			break;
+		case 1: arrow_srcPoints3D->data.fl[0 + i * 3] = 10;
+			arrow_srcPoints3D->data.fl[1 + i * 3] = -100;
+			arrow_srcPoints3D->data.fl[2 + i * 3] = 0;
+			break;
+		}
+	}
+
+	//軸の準備　ここまで  
+	////////////////////////////////// 
+
+	IplImage img;
+	IplImage gray_img;
+	IplImage* gray_img_Contour;
+
+	//輪郭保存用のストレージを確保  
+	CvMemStorage *storage = cvCreateMemStorage(0);//輪郭用  
+	CvMemStorage *storagepoly = cvCreateMemStorage(0);//輪郭近似ポリゴン用  
+
+	CvSeq *firstcontour = NULL;
+	CvSeq *polycontour = NULL;
+
+	IplImage *marker_inside = cvCreateImage(cvSize(57, 57), IPL_DEPTH_8U, 1);
+	IplImage *marker_inside_zoom = cvCreateImage(cvSize(marker_inside->width * 2, marker_inside->height * 2), IPL_DEPTH_8U, 1);
+	IplImage *tmp_img = cvCloneImage(marker_inside);
+
+	CvMat *map_matrix;
+	map_matrix = cvCreateMat(3, 3, CV_32FC1);
+
+	CvPoint2D32f src_pnt[4], dst_pnt[4], tmp_pnt[4];
+
+	dst_pnt[0] = cvPoint2D32f(0, 0);
+	dst_pnt[1] = cvPoint2D32f(marker_inside->width, 0);
+	dst_pnt[2] = cvPoint2D32f(marker_inside->width, marker_inside->height);
+	dst_pnt[3] = cvPoint2D32f(0, marker_inside->height);
+	map_matrix = cvCreateMat(3, 3, CV_32FC1);
+
+	//cvNamedWindow(" marker_inside", CV_WINDOW_AUTOSIZE);
+	//cvNamedWindow(" capture_image", CV_WINDOW_AUTOSIZE);
+
+	//マスク画像の読み込み。  
+	//検出したマーカーと、この画像のANDを取り、cvCountNonZeroが一番大きかったものをマーカーの向きとする。  
+
+	cv::Mat copy_frame;
+	cv::Mat gray_Mat;
+	cv::cvtColor(in_frame, gray_Mat, CV_BGR2GRAY);
+	gray_img = gray_Mat;
+	gray_img_Contour = cvCreateImage(cvGetSize(&gray_img), IPL_DEPTH_8U, 1);
+
+	//cv::namedWindow("test");
+	//cv::namedWindow("Capture");
+	in_frame.copyTo(copy_frame);
+	//グレースケール化
+	cv::cvtColor(in_frame, gray_Mat, CV_BGR2GRAY);
+	img = in_frame;
+	gray_img = gray_Mat;
+	//平滑化
+	cvSmooth(&gray_img, &gray_img, CV_GAUSSIAN, 3);
+	//二値化
+	cvThreshold(&gray_img, &gray_img, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+	//反転  
+	cvNot(&gray_img, &gray_img);
+	//輪郭抽出
+	int contourCount = 0;
+	cvCopy(&gray_img, gray_img_Contour);
+	contourCount = cvFindContours(gray_img_Contour, storage, &firstcontour, sizeof (CvContour), CV_RETR_CCOMP);
+	//輪郭に近似しているポリゴンを求める（最小直線距離3ピクセルに設定）
+	polycontour = cvApproxPoly(firstcontour, sizeof(CvContour), storagepoly, CV_POLY_APPROX_DP, 3, 1);
+	//cout << polycontour->total << endl;
+
+	for (CvSeq* c = polycontour; c != NULL; c = c->h_next){
+		if ((cvContourPerimeter(c)< 2000) && (cvContourPerimeter(c)> 60) && (c->total == 4)){
+			if (c->v_next != NULL){
+				if (c->v_next->total == 4){
+					int nearestindex = 0;
+					CvSeq* c_vnext = c->v_next;
+					//c_vnext = c_vnext->v_next;
+					cvDrawContours(&img, c, CV_RGB(255, 255, 0), CV_RGB(255, 0, 0), 0);
+					cvDrawContours(&img, c_vnext, CV_RGB(255, 0, 0), CV_RGB(0, 0, 255), 0);
+					float xlist[4];
+					float ylist[4];
+					for (int n = 0; n < 4; n++){
+						CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, c->v_next, n);
+						tmp_pnt[n].x = (float)p->x;
+						tmp_pnt[n].y = (float)p->y;
+						xlist[n] = (float)p->x;
+						ylist[n] = (float)p->y;
+					}
+					//四角の情報を渡す。どちらを向いているかはまだわからない  
+					cvGetPerspectiveTransform(tmp_pnt, dst_pnt, map_matrix);
+					//marker_inside（マーカーの内側だけを抽出し、正方形に透視変換したもの）  
+					//を、マスク画像を指定して一時イメージにコピー。  
+					//一時イメージに白い点が多数あれば、マスク画像と同じ方向を向いていることになる。  
+					cvWarpPerspective(&gray_img, marker_inside, map_matrix, CV_INTER_LINEAR + CV_WARP_FILL_OUTLIERS, cvScalarAll(0));
+					//cv::imshow("marker_inside", (Mat)marker_inside);
+					int notzeroCount = 0;
+					int maxCount = 0;
+					int markerDirection = 0;//基本は0deg  
+					cvResize(marker_inside, marker_inside_zoom);
+					//cout << "width=" << tempmask->width << "height=" << tempmask->height << endl;
+					//waitKey();
+					cvCopy(marker_inside, tempmask, mask0);
+					notzeroCount = cvCountNonZero(tempmask);
+					if (maxCount < notzeroCount)
+					{
+						maxCount = notzeroCount;
+						markerDirection = 0;
+						cout << 0 << endl;
+					}
+					cvZero(tempmask);
+					cvCopy(marker_inside, tempmask, mask90);
+					notzeroCount = cvCountNonZero(tempmask);
+					if (maxCount < notzeroCount)
+					{
+						maxCount = notzeroCount;
+						markerDirection = 90;
+						cout << 90 << endl;
+					}
+					cvZero(tempmask);
+					cvCopy(marker_inside, tempmask, mask180);
+					notzeroCount = cvCountNonZero(tempmask);
+					if (maxCount < notzeroCount)
+					{
+						maxCount = notzeroCount;
+						markerDirection = 180;
+						cout << 180 << endl;
+					}
+					cvZero(tempmask);
+
+					cvCopy(marker_inside, tempmask, mask270);
+					notzeroCount = cvCountNonZero(tempmask);
+					if (maxCount < notzeroCount)
+					{
+						maxCount = notzeroCount;
+						markerDirection = 270;
+						cout << 270 << endl;
+					}
+					cvZero(tempmask);
+					//四角の向きを反映させる。  
+					if (markerDirection == 0) {
+						src_pnt[0].x = tmp_pnt[0].x;
+						src_pnt[0].y = tmp_pnt[0].y;
+						src_pnt[1].x = tmp_pnt[3].x;
+						src_pnt[1].y = tmp_pnt[3].y;
+						src_pnt[2].x = tmp_pnt[2].x;
+						src_pnt[2].y = tmp_pnt[2].y;
+						src_pnt[3].x = tmp_pnt[1].x;
+						src_pnt[3].y = tmp_pnt[1].y;
+					}
+					if (markerDirection == 90) {
+						src_pnt[0].x = tmp_pnt[1].x;
+						src_pnt[0].y = tmp_pnt[1].y;
+						src_pnt[1].x = tmp_pnt[0].x;
+						src_pnt[1].y = tmp_pnt[0].y;
+						src_pnt[2].x = tmp_pnt[3].x;
+						src_pnt[2].y = tmp_pnt[3].y;
+						src_pnt[3].x = tmp_pnt[2].x;
+						src_pnt[3].y = tmp_pnt[2].y;
+					}
+					if (markerDirection == 180) {
+						src_pnt[0].x = tmp_pnt[2].x;
+						src_pnt[0].y = tmp_pnt[2].y;
+						src_pnt[1].x = tmp_pnt[1].x;
+						src_pnt[1].y = tmp_pnt[1].y;
+						src_pnt[2].x = tmp_pnt[0].x;
+						src_pnt[2].y = tmp_pnt[0].y;
+						src_pnt[3].x = tmp_pnt[3].x;
+						src_pnt[3].y = tmp_pnt[3].y;
+					}
+					if (markerDirection == 270)
+					{
+						src_pnt[0].x = tmp_pnt[3].x;
+						src_pnt[0].y = tmp_pnt[3].y;
+						src_pnt[1].x = tmp_pnt[2].x;
+						src_pnt[1].y = tmp_pnt[2].y;
+						src_pnt[2].x = tmp_pnt[1].x;
+						src_pnt[2].y = tmp_pnt[1].y;
+						src_pnt[3].x = tmp_pnt[0].x;
+						src_pnt[3].y = tmp_pnt[0].y;
+					}
+					//cvPutText(&img,"0", cvPoint((int)src_pnt[0].x,(int)src_pnt[0].y), &dfont, CV_RGB(255, 0, 255));  
+					//cvPutText(&img,"1", cvPoint((int)src_pnt[1].x,(int)src_pnt[1].y), &dfont, CV_RGB(255, 0, 255)); 
+					//マーカーのイメージ上での座標を設定。  
+					cvInitMatHeader(&image_points, 4, 1, CV_32FC2, src_pnt);
+					//矢印のイメージ上での座標を設定
+					//マーカーの基本となる座標を設定  
+					cvInitMatHeader(&object_points, 4, 3, CV_32FC1, baseMarkerPoints);
+					//カメラの内部定数(intrinsticとdistortion)から、rotationとtranslationを求める   
+					cvFindExtrinsicCameraParams2(&object_points, &image_points, intrinsic, distortion, rotation, translation);
+					//求めたものを使用して、現実空間上の座標が画面上だとどの位置に来るかを計算  
+					cvProjectPoints2(srcPoints3D, rotation, translation, intrinsic, distortion, dstPoints2D);
+					cvProjectPoints2(arrow_srcPoints3D, rotation, translation, intrinsic, distortion, arrow_dstPoints2D);
+					//軸を描画  
+					CvPoint startpoint;
+					CvPoint endpoint;
+					CvPoint arrow_startPoint;
+					CvPoint arrow_endPoint;
+					arrow_startPoint = cvPoint((int)arrow_dstPoints2D->data.fl[0], (int)arrow_dstPoints2D->data.fl[1]);
+					arrow_endPoint = cvPoint((int)arrow_dstPoints2D->data.fl[2], (int)arrow_dstPoints2D->data.fl[3]);
+					arrowedLine(in_frame, arrow_startPoint, arrow_endPoint, cv::Scalar(200, 0, 0), 5, CV_AA);
+					Notice_coordinates->x = arrow_endPoint.x;
+					Notice_coordinates->y = arrow_endPoint.y;
+				}
+			}
+		}
+	}
+
+}
