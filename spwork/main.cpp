@@ -91,6 +91,7 @@ void testAR();
 int Calibrate();
 void take_pic();
 void ARtracking(Mat in_frame, Point *Notice_coordinates);
+void test_th();
 
 /*時間の取得*/
 time_t now = time(NULL);
@@ -119,6 +120,7 @@ int main()
 	//testAR();
 	//take_pic();
 	//Calibrate();
+	test_th();
 
 	//ARの初期設定
 	CvFileStorage *fs;
@@ -1995,5 +1997,61 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 			}
 		}
 	}
+}
 
+void test_th()
+{
+	cv::VideoCapture cap;
+	cv::Size cap_size(640, 480);
+	cap.set(CV_CAP_PROP_FRAME_WIDTH, cap_size.width);
+	cap.set(CV_CAP_PROP_FRAME_HEIGHT, cap_size.height);
+
+	int fps = 8;
+	//cvGetCaptureProperty((CvCapture *)cap, CV_CAP_PROP_FPS);
+
+	cv::VideoWriter ad_th_writer("adth_capture1.avi", -1, fps, cap_size);
+	cv::VideoWriter th_writer("th_capture1.avi", -1, fps, cap_size);
+
+	cv::Mat original_frame, copy_frame;
+	cv::Mat gray_Mat,threshold_Mat, ad_threshold_Mat;
+	IplImage img;
+	IplImage gray_img;
+	IplImage *threshold_img,* ad_threshold_img;
+
+	cv::namedWindow("ad_th");
+	cv::namedWindow("th");
+	waitKey(0);
+
+	cap.open(0);
+	if (!cap.isOpened()) {
+		cout << "カメラの初期化に失敗しました" << endl;
+		//return -1;
+	}
+	waitKey(1000);
+
+	cap >> original_frame;
+	if (original_frame.empty()) cout << "カメラの初期化に失敗しました" << endl;;
+	original_frame.copyTo(copy_frame);
+	cv::cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
+	gray_img = gray_Mat;
+	
+	while (1)
+	{
+		cap >> original_frame;
+		original_frame.copyTo(copy_frame);
+		//グレースケール化
+		cv::cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
+		img = original_frame;
+		gray_img = gray_Mat;
+		threshold_img = cvCreateImage(cvGetSize(&gray_img), IPL_DEPTH_8U, 1);
+		//二値化
+		cv::threshold(gray_Mat, threshold_Mat, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+		adaptiveThreshold(gray_Mat, ad_threshold_Mat, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
+
+		cv::imshow("ad_th", ad_threshold_Mat);
+		cv::imshow("th", threshold_Mat);
+		ad_th_writer << ad_threshold_Mat;
+		th_writer << threshold_Mat;
+		cv::waitKey(2);
+	}
 }
