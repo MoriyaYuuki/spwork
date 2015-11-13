@@ -166,7 +166,7 @@ int main()
 	int fps = 8;
 	//cvGetCaptureProperty((CvCapture *)cap, CV_CAP_PROP_FPS);
 
-	cv::VideoWriter writer("capture1.avi", -1, fps, cap_size);
+	cv::VideoWriter writer("capture1.avi", CV_FOURCC('X', 'V', 'I', 'D'), fps, cap_size);
 
 	//êFí«ê’ÇÃê›íË
 	meanShift_init();
@@ -231,7 +231,7 @@ int main()
 			//cvWaitKey(0);
 			//ìÒílâª
 			IplImage *threshold_img = cvCreateImage(cvGetSize(rough_cut_img), IPL_DEPTH_8U, 1);
-			threshold(rough_cut_img, threshold_img);
+			//threshold(rough_cut_img, threshold_img);
 			adaptiveThreshold((Mat)rough_cut_img, (Mat)threshold_img, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
 			cv::imwrite("threshold.png", (Mat)threshold_img);
 			//cvNamedWindow("rough_th");
@@ -2009,8 +2009,8 @@ void test_th()
 	int fps = 8;
 	//cvGetCaptureProperty((CvCapture *)cap, CV_CAP_PROP_FPS);
 
-	cv::VideoWriter ad_th_writer("adth_capture1.avi", -1, fps, cap_size);
-	cv::VideoWriter th_writer("th_capture1.avi", -1, fps, cap_size);
+	cv::VideoWriter ad_th_writer("adth_capture1.avi", CV_FOURCC('X', 'V', 'I', 'D'), fps, cap_size);
+	cv::VideoWriter th_writer("th_capture1.avi", CV_FOURCC('X', 'V', 'I', 'D'), fps, cap_size);
 
 	cv::Mat original_frame, copy_frame;
 	cv::Mat gray_Mat,threshold_Mat, ad_threshold_Mat;
