@@ -92,6 +92,8 @@ int Calibrate();
 void take_pic();
 void ARtracking(Mat in_frame, Point *Notice_coordinates);
 void test_th();
+void cut_img();
+void on_mouse(int event, int x, int y, int flags, void* param);
 
 /*時間の取得*/
 time_t now = time(NULL);
@@ -113,6 +115,10 @@ IplImage * mask180 = cvLoadImage("mask180deg.bmp", 0);
 IplImage * mask270 = cvLoadImage("mask270deg.bmp", 0);
 IplImage * tempmask = cvCloneImage(mask0);//作業用  
 
+/*cut_img used*/
+Rect selection;
+int select_object;
+
 int main()
 {
 	//動作確認用関数
@@ -120,7 +126,8 @@ int main()
 	//testAR();
 	//take_pic();
 	//Calibrate();
-	test_th();
+	//test_th();
+	cut_img();
 
 	//ARの初期設定
 	CvFileStorage *fs;
@@ -2053,5 +2060,74 @@ void test_th()
 		ad_th_writer << ad_threshold_Mat;
 		th_writer << threshold_Mat;
 		cv::waitKey(2);
+	}
+}
+
+void cut_img()
+{
+	ofstream ofs("data.txt");
+	// (1)load a source image as is
+	char imgName[100];
+	char filePass[200];
+	int img_num = 1;
+	int num=0;
+	while (img_num < 24){
+		sprintf(imgName, "index_finger/%02d.jpg", img_num);
+		cout << imgName << endl;
+		Mat src_img = imread(imgName, -1);
+		if (!src_img.data){
+			cout << "error" << endl;;
+		}
+		// (2)create a window and set the callback function for mouse events
+		namedWindow("Image", 1);
+		cvSetMouseCallback("Image", (CvMouseCallback)(&on_mouse), &src_img);
+		// (3)show the source image with an invert area, and quit when 'esc' pressed
+		while (1) {
+			Mat dst_img = src_img.clone();
+
+			imshow("Image", dst_img);
+			int key = waitKey(10);
+			if ((char)key == 27)
+				break;
+		}
+		sprintf(filePass, "C:/Users/control/Desktop/spwork - master/spwork/index_finger/%2d.jpg", img_num);
+		cout << "指の本数を入力＝" << endl;
+		scanf_s("%d", &num);
+		ofs << filePass << " " << num << " " << selection.x << " " << selection.y << " " << selection.width << " " << selection.height << endl; 
+		img_num++;
+	}
+}
+
+void
+on_mouse(int event, int x, int y, int flags, void* param)
+{
+	static Point2i origin;
+	Mat *img = static_cast<Mat*>(param);
+
+	// (4)calculate coordinates of selected area (by Click and Drag)
+	if (select_object) {
+		selection.x = CV_IMIN(x, origin.x);
+		selection.y = CV_IMIN(y, origin.y);
+		selection.width = selection.x + CV_IABS(x - origin.x);
+		selection.height = selection.y + CV_IABS(y - origin.y);
+
+		selection.x = CV_IMAX(selection.x, 0);
+		selection.y = CV_IMAX(selection.y, 0);
+		selection.width = CV_IMIN(selection.width, img->cols);
+		selection.height = CV_IMIN(selection.height, img->rows);
+		selection.width -= selection.x;
+		selection.height -= selection.y;
+	}
+
+	// (5)process a start and a finish selecting events (i.e. button-up and -down)
+	switch (event) {
+	case CV_EVENT_LBUTTONDOWN:
+		origin = Point2i(x, y);
+		selection = Rect(x, y, 0, 0);
+		select_object = 1;
+		break;
+	case CV_EVENT_LBUTTONUP:
+		select_object = 0;
+		break;
 	}
 }
