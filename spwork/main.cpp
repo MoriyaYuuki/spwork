@@ -124,10 +124,10 @@ int main()
 	//動作確認用関数
 	//check_OCR();//画像処理部
 	//testAR();
-	//take_pic();
+	take_pic();
 	//Calibrate();
 	//test_th();
-	cut_img();
+	//cut_img();
 
 	//ARの初期設定
 	CvFileStorage *fs;
@@ -1692,7 +1692,9 @@ int Calibrate()
 
 void take_pic()
 {
-	char str[100];
+	
+	char cut_imgName[100];
+	char filePass[200];
 	cv::VideoCapture cap;
 	cv::Size cap_size(640, 480);
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, cap_size.width);
@@ -1706,20 +1708,30 @@ void take_pic()
 	cv::namedWindow("Capture");
 	cv::waitKey(1000);
 
+	makeDirectory("indexFinger_img");
+	ofstream ofs("cut_pic_data.txt");
 	cout << "ok" << endl;
 	cv::Mat original_frame;
+
 	int c;
-	int count = 0;
-	while (count<25){
+	int pic_count = 1;
+	int while_count = 0;
+	while (1){
 		c = cvWaitKey(2);
 		cap >> original_frame;
 		cv::imshow("Capture", original_frame);
-		if (c == 0x73)
-		{ // 's'キー入力
-			sprintf(str, "%2d.png", count);
-			cv::imwrite(str, original_frame);
-			count++;
+		if (c == 0x73)// 's'キー入力
+		{ 
+			//for (int i = 0; i < 100;i++){
+				sprintf(cut_imgName, "%02d.bmp", pic_count);
+				cvtColor(original_frame, original_frame, CV_BGR2GRAY);
+				imwrite(cut_imgName, original_frame);
+				sprintf(filePass, "C:/dev/rawdata/%02d.bmp", pic_count);
+				ofs << filePass << " " << "1" << " " << "0" << " " << "0" << " " << "640" << " " << "480" << endl;
+				pic_count++;
+			//}			
 		}
+
 	}	
 }
 
@@ -2067,10 +2079,10 @@ void cut_img()
 {
 	ofstream ofs("data.txt");
 	// (1)load a source image as is
-	char imgName[100];
+	char imgName[100], cut_imgName[100];
 	char filePass[200];
-	int img_num = 1;
-	int num=0;
+	int img_num = 5;
+	int num=1;
 	while (img_num < 24){
 		sprintf(imgName, "index_finger/%02d.jpg", img_num);
 		cout << imgName << endl;
@@ -2090,10 +2102,15 @@ void cut_img()
 			if ((char)key == 27)
 				break;
 		}
-		sprintf(filePass, "C:/Users/control/Desktop/spwork - master/spwork/index_finger/%2d.jpg", img_num);
-		cout << "指の本数を入力＝" << endl;
-		scanf_s("%d", &num);
-		ofs << filePass << " " << num << " " << selection.x << " " << selection.y << " " << selection.width << " " << selection.height << endl; 
+		sprintf(cut_imgName, "index_finger/%02d.bmp", img_num);
+		Mat cut_img(src_img, selection);
+		cvtColor(cut_img, cut_img, CV_BGR2GRAY);
+		imwrite(cut_imgName,cut_img);
+		sprintf(filePass, "C:/dev/index_finger/%2d.bmp", img_num);
+		//cout << "指の本数を入力＝" << endl;
+		//scanf_s("%d", &num);
+		//ofs << filePass << " " << num << " " << selection.x << " " << selection.y << " " << selection.width << " " << selection.height << endl; 
+		ofs << filePass << endl; 
 		img_num++;
 	}
 }
