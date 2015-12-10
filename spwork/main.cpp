@@ -130,7 +130,7 @@ int select_object;
 // 何度ずつに分けて投票するか（分解能）
 #define THETA (180 / N_BIN)
 // セルの大きさ（ピクセル数）
-#define CELL_SIZE 5
+#define CELL_SIZE 15
 // ブロックの大きさ（セル数）奇数
 #define BLOCK_SIZE 3
 // ブロックの大きさの半分（ピクセル数）
@@ -144,11 +144,12 @@ int main()
 	//動作確認用関数
 	//check_OCR();//画像処理部
 	//testAR();
-	take_pic();
+	//take_pic();
 	//Calibrate();
 	//test_th();
 	//cut_img();
 	test_Hog();
+
 	//ARの初期設定
 	CvFileStorage *fs;
 	CvFileNode *param;
@@ -2101,10 +2102,10 @@ void cut_img()
 	// (1)load a source image as is
 	char imgName[100], cut_imgName[100];
 	char filePass[200];
-	int img_num = 5;
+	int img_num = 1;
 	int num=1;
 	while (img_num < 24){
-		sprintf(imgName, "index_finger/%02d.jpg", img_num);
+		sprintf(imgName, "rawdata/%02d.bmp", img_num);
 		cout << imgName << endl;
 		Mat src_img = imread(imgName, -1);
 		if (!src_img.data){
@@ -2119,12 +2120,13 @@ void cut_img()
 
 			imshow("Image", dst_img);
 			int key = waitKey(10);
-			if ((char)key == 27)
+			if ((char)key == 27)//Esc key
 				break;
 		}
-		sprintf(cut_imgName, "index_finger/%02d.bmp", img_num);
+		cout << "ok" << endl;
+		sprintf(cut_imgName, "re_rawdata/%02d.bmp", img_num);
 		Mat cut_img(src_img, selection);
-		cvtColor(cut_img, cut_img, CV_BGR2GRAY);
+		//cvtColor(cut_img, cut_img, CV_BGR2GRAY);
 		imwrite(cut_imgName,cut_img);
 		sprintf(filePass, "C:/dev/index_finger/%2d.bmp", img_num);
 		//cout << "指の本数を入力＝" << endl;
@@ -2258,8 +2260,9 @@ Mat getHOG(Point pt, const vector<Mat>& integrals) {
 
 int test_Hog() {
 	// 画像をグレイスケールで読み込む
-	string fileName = "05.jpg";
+	string fileName = "re_rawdata/01.bmp";
 	Mat originalImage = imread(fileName, CV_LOAD_IMAGE_GRAYSCALE);
+	ofstream ofs("Hog_data.csv");
 
 	// 積分画像生成
 	vector<Mat> integrals = calculateIntegralHOG(originalImage);
@@ -2278,6 +2281,7 @@ int test_Hog() {
 
 	// 格子点でHOG計算
 	Mat meanHOGInBlock(Size(N_BIN, 1), CV_32F);
+
 	for (int y = CELL_SIZE / 2; y < image.rows; y += CELL_SIZE) {
 		for (int x = CELL_SIZE / 2; x < image.cols; x += CELL_SIZE) {
 			// (x, y)でのHOGを取得
@@ -2294,7 +2298,6 @@ int test_Hog() {
 			}
 			// L2ノルムで正規化（強い方向が強調される）
 			normalize(meanHOGInBlock, meanHOGInBlock, 1, 0, CV_L2);
-
 			// 角度ごとに線を描画
 			Point center(x, y);
 			for (int i = 0; i < N_BIN; i++) {
@@ -2304,8 +2307,14 @@ int test_Hog() {
 				Point lp = center - -rd;
 				line(image, rp, lp, Scalar(255 * meanHOGInBlock.at<float>(0, i), 255, 255));
 			}
+			for (int row = 0; row < (int)meanHOGInBlock.rows; row++){
+				for (int col = 0; col < (int)meanHOGInBlock.cols; col++){
+					ofs << meanHOGInBlock.at<float>(row, col) << endl;
+				}
+			}
 		}
 	}
+
 
 	// 表示
 	imshow("out", image);
