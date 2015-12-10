@@ -1708,8 +1708,8 @@ void take_pic()
 	cv::namedWindow("Capture");
 	cv::waitKey(1000);
 
-	makeDirectory("indexFinger_img");
-	ofstream ofs("cut_pic_data.txt");
+	makeDirectory("Eng_txt");
+	ofstream ofs("Eng_txt_data.txt");
 	cout << "ok" << endl;
 	cv::Mat original_frame;
 
