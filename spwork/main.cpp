@@ -18,7 +18,9 @@
 
 #include <Tchar.h>
 #include <iostream>
+#include <sstream> 
 #include <fstream>
+#include <string>
 #include <string.h>
 #include <time.h>
 #include <direct.h>
@@ -98,6 +100,9 @@ vector<Mat> calculateIntegralHOG(const Mat& image);
 void calculateHOGInCell(Mat& hogCell, Rect roi, const vector<Mat>& integrals);
 Mat getHOG(Point pt, const vector<Mat>& integrals);
 int test_Hog();
+int get_Hogdata();
+void resize_img();
+void te();
 
 /*時間の取得*/
 time_t now = time(NULL);
@@ -130,25 +135,29 @@ int select_object;
 // 何度ずつに分けて投票するか（分解能）
 #define THETA (180 / N_BIN)
 // セルの大きさ（ピクセル数）
-#define CELL_SIZE 15
+#define CELL_SIZE 12
 // ブロックの大きさ（セル数）奇数
 #define BLOCK_SIZE 3
 // ブロックの大きさの半分（ピクセル数）
 #define R (CELL_SIZE*(BLOCK_SIZE)*0.5)
 
-
-
+//Hog要素数
+#define Hog_num 4410
+#define Hog_data_num 198 //pos+neg
 
 int main()
 {
 	//動作確認用関数
 	//check_OCR();//画像処理部
-	//testAR();
+	testAR();
 	//take_pic();
 	//Calibrate();
 	//test_th();
 	//cut_img();
-	test_Hog();
+	//resize_img();
+	//test_Hog();
+	//get_Hogdata();
+	//te();
 
 	//ARの初期設定
 	CvFileStorage *fs;
@@ -164,12 +173,11 @@ int main()
 	CvMat object_points;
 	CvMat image_points;
 	CvMat point_counts;
-
 	cv::VideoCapture cap;
 	cv::Size cap_size(640, 480);
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, cap_size.width);
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, cap_size.height);
-	
+
 	Data mouse_Data;
 	cutData cut;
 	char *translate_Text_View = " ";
@@ -2104,8 +2112,8 @@ void cut_img()
 	char filePass[200];
 	int img_num = 1;
 	int num=1;
-	while (img_num < 24){
-		sprintf(imgName, "rawdata/%02d.bmp", img_num);
+	while (img_num < 100){
+		sprintf(imgName, "negative/%02d.bmp", img_num);
 		cout << imgName << endl;
 		Mat src_img = imread(imgName, -1);
 		if (!src_img.data){
@@ -2124,7 +2132,7 @@ void cut_img()
 				break;
 		}
 		cout << "ok" << endl;
-		sprintf(cut_imgName, "re_rawdata/%02d.bmp", img_num);
+		sprintf(cut_imgName, "re_negative/%02d.bmp", img_num);
 		Mat cut_img(src_img, selection);
 		//cvtColor(cut_img, cut_img, CV_BGR2GRAY);
 		imwrite(cut_imgName,cut_img);
@@ -2137,8 +2145,32 @@ void cut_img()
 	}
 }
 
-void
-on_mouse(int event, int x, int y, int flags, void* param)
+void resize_img()
+{
+	char imgName[100], resize_imgName[100];
+	char filePass[200];
+	int img_num = 1;
+	int num = 1;
+	Size resize_size(200, 450);
+	while (img_num < 100){
+		sprintf(imgName, "re_negative/%02d.bmp", img_num);
+		cout << imgName << endl;
+		Mat src_img = imread(imgName, -1);
+		if (!src_img.data){
+			cout << "error" << endl;;
+		}
+		
+		namedWindow("Image", 1);
+		sprintf(resize_imgName, "resize_negative/%02d.bmp", img_num);
+		Mat resize_img(200, 450, src_img.type());
+		cv::resize(src_img, resize_img, resize_size);
+		imwrite(resize_imgName, resize_img);
+		img_num++;
+	}
+}
+
+
+void on_mouse(int event, int x, int y, int flags, void* param)
 {
 	static Point2i origin;
 	Mat *img = static_cast<Mat*>(param);
@@ -2321,4 +2353,101 @@ int test_Hog() {
 	waitKey(0);
 
 	return 0;
+}
+
+int get_Hogdata()
+{
+	int rawdata_num = 0;
+	cout << "get_Hogdata" << endl;
+	scanf_s("rawdata_num=%d", &rawdata_num);
+	ofstream ofs("Hog_data_neg.csv", std::ios::out | std::ios::app);
+	char fileName[100];
+
+	for (int i = 1; i < 100/*rawdata_num+1*/; i++){
+		// 画像をグレイスケールで読み込む
+		//string fileName = "re_rawdata/01.bmp";
+		sprintf(fileName, "resize_negative/%02d.bmp", i);
+		Mat originalImage = imread(fileName, CV_LOAD_IMAGE_GRAYSCALE);
+
+		// 積分画像生成
+		vector<Mat> integrals = calculateIntegralHOG(originalImage);
+		// ある点(x, y)のHOG特徴量を求めるには
+		// Mat hist = getHOG(Point(x, y), integrals);
+		// とする。histはSize(81, 1) CV_32FのMat
+
+
+		/* ****************** *
+		* 以下、表示のための処理
+		* ****************** */
+
+		// 表示用画像を用意（半分の輝度に）
+		Mat image = originalImage.clone();
+		image *= 0.5;
+
+		// 格子点でHOG計算
+		Mat meanHOGInBlock(Size(N_BIN, 1), CV_32F);
+
+		for (int y = CELL_SIZE / 2; y < image.rows; y += CELL_SIZE) {
+			for (int x = CELL_SIZE / 2; x < image.cols; x += CELL_SIZE) {
+				// (x, y)でのHOGを取得
+				Mat hist = getHOG(Point(x, y), integrals);
+				// ブロックが画像からはみ出ていたら continue
+				if (hist.empty()) continue;
+
+				// ブロックごとに勾配方向ヒストグラム生成
+				meanHOGInBlock = Scalar(0);
+				for (int i = 0; i < N_BIN; i++) {
+					for (int j = 0; j < BLOCK_SIZE*BLOCK_SIZE; j++) {
+						meanHOGInBlock.at<float>(0, i) += hist.at<float>(0, i + j*N_BIN);
+					}
+				}
+				// L2ノルムで正規化（強い方向が強調される）
+				normalize(meanHOGInBlock, meanHOGInBlock, 1, 0, CV_L2);
+				// 角度ごとに線を描画
+				Point center(x, y);
+				for (int i = 0; i < N_BIN; i++) {
+					double theta = (i * THETA + 90.0) * CV_PI / 180.0;
+					Point rd(CELL_SIZE*0.5*cos(theta), CELL_SIZE*0.5*sin(theta));
+					Point rp = center - rd;
+					Point lp = center - -rd;
+					line(image, rp, lp, Scalar(255 * meanHOGInBlock.at<float>(0, i), 255, 255));
+				}
+				for (int row = 0; row < (int)meanHOGInBlock.rows; row++){
+					for (int col = 0; col < (int)meanHOGInBlock.cols; col++){
+						ofs << meanHOGInBlock.at<float>(row, col) << endl;
+					}
+				}
+			}
+		}
+
+
+		// 表示
+		imshow("out", image);
+		waitKey(0);
+	}
+	return 0;
+}
+
+void te()
+{
+	int okokokokoko;
+	cout << "okok " << endl;
+	float data[Hog_data_num][Hog_num];
+	//ifstream ifs("Hog_data.csv");
+	//if (!ifs) {
+	//	cout << "Error:Input data file not found" << endl;
+	//}
+	//stringstream ss;
+	//string tmp;
+
+	////Hogdataの準備
+	//for (int i = 0;i < Hog_data_num; i++){
+	//	for (int j = 0;j< Hog_num; j++){
+	//		getline(ifs, tmp, ',');
+	//		ss.str(tmp);
+	//		ss >> data[i][j];
+	//	}
+	//}
+	//cout << data << endl << endl;
+	waitKey(0);
 }
