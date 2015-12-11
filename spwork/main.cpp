@@ -100,9 +100,10 @@ vector<Mat> calculateIntegralHOG(const Mat& image);
 void calculateHOGInCell(Mat& hogCell, Rect roi, const vector<Mat>& integrals);
 Mat getHOG(Point pt, const vector<Mat>& integrals);
 int test_Hog();
-int get_Hogdata();
+int init_Hogdata();
+void get_Hogdata(Mat input_img, float *Hogdata[]);
 void resize_img();
-void te();
+void get_Boost();
 
 /*時間の取得*/
 time_t now = time(NULL);
@@ -143,21 +144,23 @@ int select_object;
 
 //Hog要素数
 #define Hog_num 4410
-#define Hog_data_num 198 //pos+neg
+//pos+neg data_num
+#define Hog_data_num 198 
+
 
 int main()
 {
 	//動作確認用関数
 	//check_OCR();//画像処理部
-	testAR();
+	//testAR();
 	//take_pic();
 	//Calibrate();
 	//test_th();
 	//cut_img();
 	//resize_img();
 	//test_Hog();
-	//get_Hogdata();
-	//te();
+	//init_Hogdata();
+	get_Boost();
 
 	//ARの初期設定
 	CvFileStorage *fs;
@@ -2153,15 +2156,17 @@ void resize_img()
 	int num = 1;
 	Size resize_size(200, 450);
 	while (img_num < 100){
-		sprintf(imgName, "re_negative/%02d.bmp", img_num);
+		//sprintf(imgName, "re_negative/%02d.bmp", img_num);
+		sprintf(imgName, "dog.jpg");
 		cout << imgName << endl;
-		Mat src_img = imread(imgName, -1);
+		Mat src_img = imread(imgName, CV_LOAD_IMAGE_GRAYSCALE);
 		if (!src_img.data){
 			cout << "error" << endl;;
 		}
 		
 		namedWindow("Image", 1);
-		sprintf(resize_imgName, "resize_negative/%02d.bmp", img_num);
+		//sprintf(resize_imgName, "resize_negative/%02d.bmp", img_num);
+		sprintf(resize_imgName, "resize_negative/dog.bmp");
 		Mat resize_img(200, 450, src_img.type());
 		cv::resize(src_img, resize_img, resize_size);
 		imwrite(resize_imgName, resize_img);
@@ -2355,7 +2360,7 @@ int test_Hog() {
 	return 0;
 }
 
-int get_Hogdata()
+int init_Hogdata()
 {
 	int rawdata_num = 0;
 	cout << "get_Hogdata" << endl;
@@ -2428,26 +2433,110 @@ int get_Hogdata()
 	return 0;
 }
 
-void te()
+void get_Hogdata(Mat input_img, float *Hogdata)
 {
-	int okokokokoko;
-	cout << "okok " << endl;
-	float data[Hog_data_num][Hog_num];
-	//ifstream ifs("Hog_data.csv");
-	//if (!ifs) {
-	//	cout << "Error:Input data file not found" << endl;
-	//}
-	//stringstream ss;
-	//string tmp;
+	// 積分画像生成
+	vector<Mat> integrals = calculateIntegralHOG(input_img);
+	// ある点(x, y)のHOG特徴量を求めるには
+	// Mat hist = getHOG(Point(x, y), integrals);
+	// とする。histはSize(81, 1) CV_32FのMat
 
-	////Hogdataの準備
-	//for (int i = 0;i < Hog_data_num; i++){
-	//	for (int j = 0;j< Hog_num; j++){
-	//		getline(ifs, tmp, ',');
-	//		ss.str(tmp);
-	//		ss >> data[i][j];
-	//	}
-	//}
-	//cout << data << endl << endl;
-	waitKey(0);
+	/* ****************** *
+	* 以下、表示のための処理
+	* ****************** */
+	// 表示用画像を用意（半分の輝度に）
+	Mat image = input_img.clone();
+	image *= 0.5;
+	// 格子点でHOG計算
+	Mat meanHOGInBlock(Size(N_BIN, 1), CV_32F);
+	for (int y = CELL_SIZE / 2; y < image.rows; y += CELL_SIZE) {
+		for (int x = CELL_SIZE / 2; x < image.cols; x += CELL_SIZE) {
+			// (x, y)でのHOGを取得
+			Mat hist = getHOG(Point(x, y), integrals);
+			// ブロックが画像からはみ出ていたら continue
+			if (hist.empty()) continue;
+			// ブロックごとに勾配方向ヒストグラム生成
+			meanHOGInBlock = Scalar(0);
+			for (int i = 0; i < N_BIN; i++) {
+				for (int j = 0; j < BLOCK_SIZE*BLOCK_SIZE; j++) {
+					meanHOGInBlock.at<float>(0, i) += hist.at<float>(0, i + j*N_BIN);
+				}
+			}
+			// L2ノルムで正規化（強い方向が強調される）
+			int num=0;
+			normalize(meanHOGInBlock, meanHOGInBlock, 1, 0, CV_L2);
+			for (int row = 0; row < (int)meanHOGInBlock.rows; row++){
+				for (int col = 0; col < (int)meanHOGInBlock.cols; col++){
+					Hogdata[num] = meanHOGInBlock.at<float>(row, col) ;
+					num++;
+				}
+			}
+		}
+	}
 }
+
+void get_Boost()
+{
+	float training_Hogdata[Hog_data_num][Hog_num];
+	float training_labels[Hog_data_num] = {0};
+	ifstream ifs("Hog_data.csv");
+	if (!ifs) {
+		cout << "Error:Input data file not found" << endl;
+	}
+	stringstream ss;
+	string tmp;
+	char true_imgName[100], false_imgName[100];
+	CvBoost boost;
+
+	//Hogdataの準備
+	for (int i = 0;i < Hog_data_num; i++){
+		for (int j = 0;j< Hog_num; j++){
+			getline(ifs, tmp);
+			ss.str(tmp);
+			ss >> training_Hogdata[i][j];
+			ss.str("");
+			ss.clear(stringstream::goodbit);
+		}
+	}
+	for (int i = 0; i <  99; i++){
+		training_labels[i] = 1;
+	}
+	Mat Hogdata_Mat(198, 4410, CV_32FC1, training_Hogdata);
+	Mat training_labels_Mat(1,Hog_data_num,CV_32FC1, training_labels);
+	cout << "Boost training start" << endl;
+	boost.train(Hogdata_Mat, CV_ROW_SAMPLE, training_labels_Mat);
+	cout << "Boost training end" << endl; 
+	sprintf(true_imgName, "resize_positive/%02d.bmp", 25);
+	cout << true_imgName << endl;
+	Mat true_img = imread(true_imgName, -1);
+	float true_Hogdata[4410];
+	get_Hogdata(true_img,true_Hogdata);
+
+	sprintf(false_imgName, "resize_negative/dog.bmp");
+	cout << false_imgName << endl;
+	Mat false_img = imread(false_imgName, -1);
+	float false_Hogdata[4410];
+	get_Hogdata(false_img, false_Hogdata);
+
+
+	Mat true_Hogdata_Mat(1, 4410, CV_32FC1, true_Hogdata);
+	Mat false_Hogdata_Mat(1, 4410, CV_32FC1, false_Hogdata);
+
+	float response1 = boost.predict(true_Hogdata_Mat);
+	if (response1 == 1.0f) {
+		cout << "true" << endl;
+	}
+	else {
+		cout << "false" << endl;
+	}
+	float response2 = boost.predict(false_Hogdata_Mat);
+	if (response2 == 1.0f) {
+		cout << "true" << endl;
+	}
+	else {
+		cout << "false" << endl;
+	}
+
+	//waitKey(0);
+}
+

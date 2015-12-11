@@ -53,6 +53,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>C:\Program Files (x86)\Tesseract-OCR\lib\liblept168.lib;C:\Program Files (x86)\Tesseract-OCR\lib\liblept168d.lib;C:\Program Files (x86)\Tesseract-OCR\lib\libtesseract302.lib;C:\Program Files (x86)\Tesseract-OCR\lib\libtesseract302d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StackReserveSize>8000000</StackReserveSize>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
