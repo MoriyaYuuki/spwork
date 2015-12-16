@@ -130,7 +130,7 @@ int select_object;
 // 何度ずつに分けて投票するか（分解能）
 #define THETA (180 / N_BIN)
 // セルの大きさ（ピクセル数）
-#define CELL_SIZE 15
+#define CELL_SIZE 12
 // ブロックの大きさ（セル数）奇数
 #define BLOCK_SIZE 3
 // ブロックの大きさの半分（ピクセル数）
@@ -2318,6 +2318,7 @@ int test_Hog() {
 
 	// 表示
 	imshow("out", image);
+	imwrite("re_rawdata /ppt_01.bmp", image);
 	waitKey(0);
 
 	return 0;
