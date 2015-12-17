@@ -1,4 +1,4 @@
-
+ï»¿
 #define _CRT_SECURE_NO_WARNINGS 
 #define _USE_MATH_DEFINES
 
@@ -32,7 +32,7 @@
 using namespace cv;
 using namespace std;
 
-#define search_area 200 /*ŒX‚«’Tõ”ÍˆÍ*/
+#define search_area 200 /*å‚¾ãæ¢ç´¢ç¯„å›²*/
 #define rough_cut_area_width 200
 #define rough_cut_area_hight 100
 
@@ -41,21 +41,21 @@ using namespace std;
 
 #define camera_num 1
 
-//#define MARKER_SIZE (20)       /* ƒ}[ƒJ[‚ÌŠO‘¤‚Ì1•Ó‚ÌƒTƒCƒY[mm] */
+//#define MARKER_SIZE (20)       /* ãƒãƒ¼ã‚«ãƒ¼ã®å¤–å´ã®1è¾ºã®ã‚µã‚¤ã‚º[mm] */
 
-typedef struct _data{/*Ø‚èæ‚è”ÍˆÍ‚Ì\‘¢‘Ì*/
+typedef struct _data{/*åˆ‡ã‚Šå–ã‚Šç¯„å›²ã®æ§‹é€ ä½“*/
 	int event, x = 0, y = 0, flag;
 }Data;
 
-typedef struct _cutdata{/*Ø‚èæ‚è”ÍˆÍ‚Ì\‘¢‘Ì*/
+typedef struct _cutdata{/*åˆ‡ã‚Šå–ã‚Šç¯„å›²ã®æ§‹é€ ä½“*/
 	int x = 0, y = 0, width = 0, hight = 0;
 }cutData;
 
-typedef struct _totaldata{/*Ø‚èæ‚è”ÍˆÍ‚Ì\‘¢‘Ì*/
+typedef struct _totaldata{/*åˆ‡ã‚Šå–ã‚Šç¯„å›²ã®æ§‹é€ ä½“*/
 	int x = 0, total = 0;
 }totalData;
 
-//’ÇÕ‚·‚éF‚Ìƒf[ƒ^
+//è¿½è·¡ã™ã‚‹è‰²ã®ãƒ‡ãƒ¼ã‚¿
 struct track_color_data {
 	int trackObject;
 	bool selectObject;
@@ -104,18 +104,19 @@ int init_Hogdata();
 void get_Hogdata(Mat input_img, float *Hogdata[]);
 void resize_img();
 void get_Boost();
+void getHog_another(Mat inImg, float* vec_tmp);
 
-/*ŠÔ‚Ìæ“¾*/
+/*æ™‚é–“ã®å–å¾—*/
 time_t now = time(NULL);
 struct tm *pnow = localtime(&now);
 
-/*meanshift—pƒOƒ[ƒoƒ‹ŠÖ”*/
+/*meanshiftç”¨ã‚°ãƒ­ãƒ¼ãƒãƒ«é–¢æ•°*/
 HSV_Threshold hsv_threshold;
 Mat meanshift_hist;
 track_color_data data = { 0 };
 float meanshift_hranges[] = { 0, 180 };
 
-/*AR—p*/
+/*ARç”¨*/
 CvMat *intrinsic, *distortion;
 CvMat *rotation = cvCreateMat(1, 3, CV_32FC1);
 CvMat *translation = cvCreateMat(1, 3, CV_32FC1);
@@ -123,35 +124,35 @@ IplImage * mask0 = cvLoadImage("mask0deg.bmp", 0);
 IplImage * mask90 = cvLoadImage("mask90deg.bmp", 0);
 IplImage * mask180 = cvLoadImage("mask180deg.bmp", 0);
 IplImage * mask270 = cvLoadImage("mask270deg.bmp", 0);
-IplImage * tempmask = cvCloneImage(mask0);//ì‹Æ—p  
+IplImage * tempmask = cvCloneImage(mask0);//ä½œæ¥­ç”¨  
 
 /*cut_img used*/
 Rect selection;
 int select_object;
 
 
-/*HogŒvZ—p*/
-// ƒqƒXƒgƒOƒ‰ƒ€‚Ìƒrƒ“”
+/*Hogè¨ˆç®—ç”¨*/
+// ãƒ’ã‚¹ãƒˆã‚°ãƒ©ãƒ ã®ãƒ“ãƒ³æ•°
 #define N_BIN 9
-// ‰½“x‚¸‚Â‚É•ª‚¯‚Ä“Š•[‚·‚é‚©i•ª‰ğ”\j
+// ä½•åº¦ãšã¤ã«åˆ†ã‘ã¦æŠ•ç¥¨ã™ã‚‹ã‹ï¼ˆåˆ†è§£èƒ½ï¼‰
 #define THETA (180 / N_BIN)
-// ƒZƒ‹‚Ì‘å‚«‚³iƒsƒNƒZƒ‹”j
+// ã‚»ãƒ«ã®å¤§ãã•ï¼ˆãƒ”ã‚¯ã‚»ãƒ«æ•°ï¼‰
 #define CELL_SIZE 12
-// ƒuƒƒbƒN‚Ì‘å‚«‚³iƒZƒ‹”jŠï”
+// ãƒ–ãƒ­ãƒƒã‚¯ã®å¤§ãã•ï¼ˆã‚»ãƒ«æ•°ï¼‰å¥‡æ•°
 #define BLOCK_SIZE 3
-// ƒuƒƒbƒN‚Ì‘å‚«‚³‚Ì”¼•ªiƒsƒNƒZƒ‹”j
+// ãƒ–ãƒ­ãƒƒã‚¯ã®å¤§ãã•ã®åŠåˆ†ï¼ˆãƒ”ã‚¯ã‚»ãƒ«æ•°ï¼‰
 #define R (CELL_SIZE*(BLOCK_SIZE)*0.5)
 
-//Hog—v‘f”
-#define Hog_num 4410
+//Hogè¦ç´ æ•°
+#define Hog_num 43740
 //pos+neg data_num
-#define Hog_data_num 198 
+#define Hog_data_num 198
 
 
 int main()
 {
-	//“®ìŠm”F—pŠÖ”
-	//check_OCR();//‰æ‘œˆ—•”
+	//å‹•ä½œç¢ºèªç”¨é–¢æ•°
+	//check_OCR();//ç”»åƒå‡¦ç†éƒ¨
 	//testAR();
 	//take_pic();
 	//Calibrate();
@@ -159,10 +160,10 @@ int main()
 	//cut_img();
 	//resize_img();
 	//test_Hog();
-	init_Hogdata();
-	//get_Boost();
+	//init_Hogdata();
+	get_Boost();
 
-	//AR‚Ì‰Šúİ’è
+	//ARã®åˆæœŸè¨­å®š
 	CvFileStorage *fs;
 	CvFileNode *param;
 	fs = cvOpenFileStorage("camera.xml", 0, CV_STORAGE_READ);
@@ -193,23 +194,23 @@ int main()
 	int stopCount = 0;
 	int ch;
 	char str[100];
-	// Å‰‚ÉŒ©‚Â‚©‚Á‚½ƒJƒƒ‰‚ğŠJ‚­
+	// æœ€åˆã«è¦‹ã¤ã‹ã£ãŸã‚«ãƒ¡ãƒ©ã‚’é–‹ã
 	cap.open(0);
 	if (!cap.isOpened()) {
-		cout << "ƒJƒƒ‰‚Ì‰Šú‰»‚É¸”s‚µ‚Ü‚µ‚½" << endl;
+		cout << "ã‚«ãƒ¡ãƒ©ã®åˆæœŸåŒ–ã«å¤±æ•—ã—ã¾ã—ãŸ" << endl;
 		return -1;
 	}
 
-	// “®‰æ•Û‘¶İ’è
+	// å‹•ç”»ä¿å­˜è¨­å®š
 	int fps = 8;
 	//cvGetCaptureProperty((CvCapture *)cap, CV_CAP_PROP_FPS);
 
 	cv::VideoWriter writer("capture1.avi", CV_FOURCC('X', 'V', 'I', 'D'), fps, cap_size);
 
-	//F’ÇÕ‚Ìİ’è
+	//è‰²è¿½è·¡ã®è¨­å®š
 	meanShift_init();
 
-	//“ú–{Œê•\¦‚Ìİ’è
+	//æ—¥æœ¬èªè¡¨ç¤ºã®è¨­å®š
 	cvPutTextJP putTextJP;
 	Point2i pos;
 	pos.x = 0;
@@ -220,54 +221,54 @@ int main()
 	cv::namedWindow("Capture");
 	int loopcount = 0;
 	while (loopcount<50) {
-		// ‰æ‘œ‚ğæ“¾
+		// ç”»åƒã‚’å–å¾—
 		cv::Mat original_frame, copy_frame;
 		cv::Mat gray_Mat;
 		cap >> original_frame;
 		if (original_frame.empty()) break;
 		original_frame.copyTo(copy_frame);
-		//F’ÇÕ
+		//è‰²è¿½è·¡
 		//meanShift(copy_frame,Notice_coordinates);
-		//ARƒ}[ƒJ[’ÇÕ
+		//ARãƒãƒ¼ã‚«ãƒ¼è¿½è·¡
 		ARtracking(copy_frame, Notice_coordinates);
 		if (abs(Notice_coordinates->x - preNotice_coordinates->x) < 5  && abs(Notice_coordinates->y - preNotice_coordinates->y) <5){
 			stopCount++;
 		}
 		/*cout << "stopCount = " <<stopCount << endl;
-		cout << "À•Wx" << Notice_coordinates->x << "À•Wy" << Notice_coordinates->y << endl;*/
+		cout << "åº§æ¨™x" << Notice_coordinates->x << "åº§æ¨™y" << Notice_coordinates->y << endl;*/
 		if (stopCount ==100 ){
-			//ƒOƒŒ[ƒXƒP[ƒ‹‰»
+			//ã‚°ãƒ¬ãƒ¼ã‚¹ã‚±ãƒ¼ãƒ«åŒ–
 			cv::cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
 			cv::imwrite("original.png", original_frame);
 			cv::imwrite("gray.png", gray_Mat);
 			IplImage gray_img = gray_Mat;
-			//•\¦
+			//è¡¨ç¤º
 			/*cvNamedWindow("Copy");
 			cvShowImage("Copy", &gray_img);*/
-			////ƒ}ƒEƒX‚©‚çÀ•W“ü—Í
-			//std::cout << "ƒ}ƒEƒX‚ÅÀ•W“ü—Í" << std::endl;
+			////ãƒã‚¦ã‚¹ã‹ã‚‰åº§æ¨™å…¥åŠ›
+			//std::cout << "ãƒã‚¦ã‚¹ã§åº§æ¨™å…¥åŠ›" << std::endl;
 			//cvSetMouseCallback("Copy", Mouse, (void*)&mouse_Data);
 			//cvWaitKey(0);
 			//Point coordinates;
 			//coordinates.x = mouse_Data.x;
 			//coordinates.y = mouse_Data.y;
-			//ŒX‚«•â³
+			//å‚¾ãè£œæ­£
 			int slopeValue = Bresenhams_line_algorithm(&gray_img, *Notice_coordinates);
-			//std::cout << "C³Šp“x" << slopeValue << "‹" << std::endl;
-			//‰æ‘œ‚Ì‰ñ“]
+			//std::cout << "ä¿®æ­£è§’åº¦" << slopeValue << "Â°" << std::endl;
+			//ç”»åƒã®å›è»¢
 			IplImage *afterRotation_img = cvCreateImage(cvGetSize(&gray_img), IPL_DEPTH_8U, 1);
 			CvMat *rotationMat = cvCreateMat(2, 3, CV_32FC1);
 			cv2DRotationMatrix(cvPoint2D32f(Notice_coordinates->x, Notice_coordinates->y), slopeValue, 1, rotationMat);
 			cvWarpAffine(&gray_img, afterRotation_img, rotationMat, CV_INTER_LINEAR + CV_WARP_FILL_OUTLIERS, cvScalarAll(255));
 			cv::imwrite("rotaion.png", (Mat)afterRotation_img);
-			/*‘å‚Ü‚©‚ÈØ‚èo‚µˆ—*/
+			/*å¤§ã¾ã‹ãªåˆ‡ã‚Šå‡ºã—å‡¦ç†*/
 			cvSetImageROI(afterRotation_img, cvRect(Notice_coordinates->x - rough_cut_area_width / 2, Notice_coordinates->y - rough_cut_area_hight / 2, rough_cut_area_width, rough_cut_area_hight));
 			IplImage *rough_cut_img = cvCreateImage(cvGetSize(afterRotation_img), IPL_DEPTH_8U, 1);
 			cvCopy(afterRotation_img, rough_cut_img);
 			cvResetImageROI(afterRotation_img);
 			cv::imwrite("rough_cut.png", (Mat)rough_cut_img);
 			//cvWaitKey(0);
-			//“ñ’l‰»
+			//äºŒå€¤åŒ–
 			IplImage *threshold_img = cvCreateImage(cvGetSize(rough_cut_img), IPL_DEPTH_8U, 1);
 			//threshold(rough_cut_img, threshold_img);
 			adaptiveThreshold((Mat)rough_cut_img, (Mat)threshold_img, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
@@ -275,7 +276,7 @@ int main()
 			//cvNamedWindow("rough_th");
 			//cvShowImage("rough_th", threshold_img);
 			//waitKey();
-			//’PŒê‚ÌØ‚èo‚µ
+			//å˜èªã®åˆ‡ã‚Šå‡ºã—
 			IplImage *cutOut_img = cvCreateImage(cvGetSize(threshold_img), IPL_DEPTH_8U, 1);
 			cutout(threshold_img, &cut);
 			cvSetImageROI(threshold_img, cvRect(cut.x, cut.y, cut.width, cut.hight));
@@ -286,18 +287,18 @@ int main()
 			//cvNamedWindow("cutOut_img");
 			//cvShowImage("cutOut_img", cutOut_img);
 			//waitKey();
-			//‰æ‘œ•âŠÔ+‘N‰s‰»
+			//ç”»åƒè£œé–“+é®®é‹­åŒ–
 			IplImage *cutOut_resize_img1 = cvCreateImage(cvSize(cutOut_img->width * 4, cutOut_img->height * 4), IPL_DEPTH_8U, 1);
 			cv::resize((Mat)cutOut_img, (Mat)cutOut_resize_img1, cvSize(cutOut_img->width * 4, cutOut_img->height * 4), INTER_NEAREST);
 
-			IplImage * g_resize_img1_2 = cvCreateImage(cvSize(cutOut_resize_img1->width, cutOut_resize_img1->height), IPL_DEPTH_8U, 1);//c‰¡4”{;
+			IplImage * g_resize_img1_2 = cvCreateImage(cvSize(cutOut_resize_img1->width, cutOut_resize_img1->height), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€;
 			cv::GaussianBlur((Mat)cutOut_resize_img1, (Mat)g_resize_img1_2, cv::Size(11, 11), 6, 6);
 			IplImage *sub_test_img2 = cvCreateImage(cvSize(cutOut_resize_img1->width, cutOut_resize_img1->height ), IPL_DEPTH_8U, 1);
 			IplImage *unsharp_test_img2 = cvCreateImage(cvSize(cutOut_resize_img1->width, cutOut_resize_img1->height), IPL_DEPTH_8U, 1);
 			(Mat)sub_test_img2 = (Mat)cutOut_resize_img1 - (Mat)g_resize_img1_2;
 			(Mat)unsharp_test_img2 = (Mat)cutOut_resize_img1 + ((Mat)sub_test_img2 * 60);
 
-			//•¶š”F¯
+			//æ–‡å­—èªè­˜
 			char* result_Text = ocr(cutOut_img);
 			char* result_Text1 = ocr(unsharp_test_img2);
 
@@ -308,7 +309,7 @@ int main()
 			sprintf(str, "%2d.bmp", loopcount);
 			cvSaveImage(str, unsharp_test_img2);
 			
-			//–|–ó
+			//ç¿»è¨³
 			char translate_Text[100] = { " " };
 			Bing_Translator(result_Text1, translate_Text);
 			//cout << translate_Text << endl;
@@ -327,7 +328,7 @@ int main()
 			stopCount = 0;
 			loopcount++;
 		}
-		//•\¦
+		//è¡¨ç¤º
 		//cout << translate_Text_view << endl;
 		rectangle(copy_frame, Point(0, 0), Point(270, 30), Scalar(255, 255, 255), -1, CV_AA);
 		putTextJP.setLocate(pos);
@@ -336,9 +337,9 @@ int main()
 		writer << copy_frame;
 		preNotice_coordinates->x = Notice_coordinates->x;
 		preNotice_coordinates->y = Notice_coordinates->y;
-		ch = cvWaitKey(1); // 0 ‚ÍƒfƒBƒŒƒCŠÔ (ƒ~ƒŠ•b’PˆÊ)
+		ch = cvWaitKey(1); // 0 ã¯ãƒ‡ã‚£ãƒ¬ã‚¤æ™‚é–“ (ãƒŸãƒªç§’å˜ä½)
 		//if (ch == '\x1b') {
-		//	// ESC ƒL[
+		//	// ESC ã‚­ãƒ¼
 		//	break;
 		//}
 		if (cv::waitKey(30) >= 0) {
@@ -355,7 +356,7 @@ int main()
 
 void makeDirectory(const char *dirName)
 {
-	/*“ú•t‚©‚çƒfƒBƒŒƒNƒgƒŠì¬*/
+	/*æ—¥ä»˜ã‹ã‚‰ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªä½œæˆ*/
 	char directoryName[100];
 	sprintf(directoryName, "%s_%d%02d%02d",
 		dirName, pnow->tm_year + 1900, pnow->tm_mon + 1, pnow->tm_mday);
@@ -365,15 +366,15 @@ void makeDirectory(const char *dirName)
 
 void CAM(char* filename)
 {
-	const double WIDTH = 640;  // •
-	const double HEIGHT = 480; // ‚‚³
-	const int CAMERANUM = 0; // ƒJƒƒ‰”Ô†
-	/*‰æ‘œŠÖŒW*/
+	const double WIDTH = 640;  // å¹…
+	const double HEIGHT = 480; // é«˜ã•
+	const int CAMERANUM = 0; // ã‚«ãƒ¡ãƒ©ç•ªå·
+	/*ç”»åƒé–¢ä¿‚*/
 	CvCapture *capture = NULL;
 	IplImage *frame = 0;
 	int ch;
 
-	// ƒJƒƒ‰Ú‘±A•‚Æ‚‚³‚Ìİ’è
+	// ã‚«ãƒ¡ãƒ©æ¥ç¶šã€å¹…ã¨é«˜ã•ã®è¨­å®š
 	capture = cvCreateCameraCapture(CAMERANUM);
 	cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, WIDTH);
 	cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, HEIGHT);
@@ -381,12 +382,12 @@ void CAM(char* filename)
 	while (1) {
 		frame = cvQueryFrame(capture);
 		cvShowImage("Capture", frame);
-		ch = cvWaitKey(1); // 0 ‚ÍƒfƒBƒŒƒCŠÔ (ƒ~ƒŠ•b’PˆÊ)
+		ch = cvWaitKey(1); // 0 ã¯ãƒ‡ã‚£ãƒ¬ã‚¤æ™‚é–“ (ãƒŸãƒªç§’å˜ä½)
 		if (ch == 's'){
 			cvSaveImage(filename, frame);
 		}
 		if (ch == '\x1b') {
-			// ESC ƒL[
+			// ESC ã‚­ãƒ¼
 			break;
 		}
 	}
@@ -405,7 +406,7 @@ void get_imageData(char* filename, IplImage* img)
 
 	for (y = 0; y < img->height; y++) {
 		for (x = 0; x < img->width; x++) {
-			/* ‰æ‘f’l‚ğ’¼Ú‘€ì‚·‚éˆê—á */
+			/* ç”»ç´ å€¤ã‚’ç›´æ¥æ“ä½œã™ã‚‹ä¸€ä¾‹ */
 			//p[0] = img->imageData[img->widthStep * y + x * 3];        // B
 			//p[1] = img->imageData[img->widthStep * y + x * 3 + 1];    // G
 			//p[2] = img->imageData[img->widthStep * y + x * 3 + 2];    // R
@@ -439,9 +440,9 @@ void threshold(IplImage* img, IplImage* t_img)//, char* filename)
 {
 	IplImage *src_img = 0;
 	int x;
-	char exfilename[100];/*Šg’£q•t‚«ƒtƒ@ƒCƒ‹–¼*/
+	char exfilename[100];/*æ‹¡å¼µå­ä»˜ããƒ•ã‚¡ã‚¤ãƒ«å*/
 
-	//cvSmooth (src_img, src_img, CV_GAUSSIAN, 5);//•½‹Ï‰»
+	//cvSmooth (src_img, src_img, CV_GAUSSIAN, 5);//å¹³å‡åŒ–
 
 	//cvThreshold(img, t_img, 100, 255, CV_THRESH_BINARY);
 	//sprintf(exfilename, "100_%s", filename);
@@ -455,12 +456,12 @@ void threshold(IplImage* img, IplImage* t_img)//, char* filename)
 	//sprintf(exfilename, "75%s", filename);
 	//cvSaveImage(exfilename, t_img);
 
-	// (1)‹P“x•½‹Ï
+	// (1)è¼åº¦å¹³å‡
 	//x = cvThreshold(img, t_img, 127, 255, CV_THRESH_BINARY);
 	//sprintf(exfilename, "ave%d%s", x, filename);
 	//cvSaveImage(exfilename, t_img);
 
-	// (2)‘å’Ã‚Ìè–@
+	// (2)å¤§æ´¥ã®æ‰‹æ³•
 	x = cvThreshold(img, t_img, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 	//sprintf(exfilename, "Otsu%d%s", x, filename);
 	//cvSaveImage(exfilename, t_img);
@@ -490,7 +491,7 @@ double inc_y_table(int angle){
 	}
 }
 
-int slope_revision(IplImage* img, Data data){ /*‚¢‚­‚Â‚·‚·‚ñ‚¾‚ç1ã‚ª‚é‚©*/
+int slope_revision(IplImage* img, Data data){ /*ã„ãã¤ã™ã™ã‚“ã ã‚‰1ä¸ŠãŒã‚‹ã‹*/
 	int angle = 0;
 	int i = 0, j = 0;
 	int p = 0, m = 0;
@@ -503,43 +504,43 @@ int slope_revision(IplImage* img, Data data){ /*‚¢‚­‚Â‚·‚·‚ñ‚¾‚ç1ã‚ª‚é‚©*/
 	int slopeAngle = 0;
 	ofstream ofs("slopecheack.txt");
 
-	/*ŒX‚«’Tõ”ÍˆÍ‚Ì’²®*/
-	if (data.x - search_area / 2 < 0){/*‰æ‘œƒTƒCƒY‚æ‚è‚Í‚İo‚½‚ç*/
+	/*å‚¾ãæ¢ç´¢ç¯„å›²ã®èª¿æ•´*/
+	if (data.x - search_area / 2 < 0){/*ç”»åƒã‚µã‚¤ã‚ºã‚ˆã‚Šã¯ã¿å‡ºãŸã‚‰*/
 		plusSearchArea = abs(data.x - search_area / 2) + search_area / 2;
 		minusSearchArea = data.x;
 	}
-	else if ((data.x + search_area / 2) > 640){ /*‰æ‘œƒTƒCƒY‚æ‚è‚Í‚İo‚½‚ç*/
+	else if ((data.x + search_area / 2) > 640){ /*ç”»åƒã‚µã‚¤ã‚ºã‚ˆã‚Šã¯ã¿å‡ºãŸã‚‰*/
 		plusSearchArea = 640 - data.x;
 		minusSearchArea = ((data.x + search_area / 2) - 640) + search_area / 2;
 	}
-	/*•½‹Ï‹P“xŒvZ*/
+	/*å¹³å‡è¼åº¦è¨ˆç®—*/
 	for (angle = -10; angle < 11; angle++){
-		//ofs << "ŒX‚«" << angle << endl;
+		//ofs << "å‚¾ã" << angle << endl;
 		max = 0;
 		min = 0;
-		/*y² Ø•ĞˆÚ“®*/
+		/*yè»¸ åˆ‡ç‰‡ç§»å‹•*/
 		for (i = -10; i < 11; i++){
-			//ofs << "Ø•Ğ" << i << endl;
+			//ofs << "åˆ‡ç‰‡" << i << endl;
 			sum = 0;
-			/*x²|•ûŒü*/
+			/*xè»¸ï¼æ–¹å‘*/
 			for (m = 1; m < minusSearchArea; m++){
 				if (angle == 0){
 					slope = 0;
 				}
 				else {
-					slope = m / slope_table(angle);/*ŒX‚«ŒvZ*/
+					slope = m / slope_table(angle);/*å‚¾ãè¨ˆç®—*/
 				}
 				bank = (uchar)img->imageData[img->widthStep *(data.y + i - slope) + data.x - m];
 				sum += (uchar)img->imageData[img->widthStep *(data.y + i - slope) + data.x - m];
 				//cout << "a" << endl;	
 			}
-			/*x²{•ûŒü*/
+			/*xè»¸ï¼‹æ–¹å‘*/
 			for (p = 1; p < plusSearchArea; p++){
 				if (angle == 0){
 					slope = 0;
 				}
 				else {
-					slope = p / slope_table(angle);/*ŒX‚«ŒvZ*/
+					slope = p / slope_table(angle);/*å‚¾ãè¨ˆç®—*/
 				}
 				bank = (uchar)img->imageData[img->widthStep *(data.y + i + slope) + data.x + p];
 				sum += (uchar)img->imageData[img->widthStep *(data.y + i + slope) + data.x + p];
@@ -577,8 +578,8 @@ int Bresenhams_line_algorithm(IplImage* img, Point data){
 	int over = 0;
 	int dx = 0, dy = 0;
 	int x = 0, y = 0;
-	int D = 0;/*ŠÖ”’l*/
-	int quadrant = 0;/*ŒX‚«*/
+	int D = 0;/*é–¢æ•°å€¤*/
+	int quadrant = 0;/*å‚¾ã*/
 	double ave = 0.0, max = 0.0, min = 0.0;
 	double ans = 0.0, max_ans = 0.0;
 	int slopeAngle = 0;
@@ -587,10 +588,10 @@ int Bresenhams_line_algorithm(IplImage* img, Point data){
 	CvPoint startPoint = {0}, endPoint;
 
 	
-	/*ŒX‚«’Tõ”ÍˆÍ‚Ì’²®*/
-	/*n“_‚ÌŒˆ’è(xÀ•W)*/
+	/*å‚¾ãæ¢ç´¢ç¯„å›²ã®èª¿æ•´*/
+	/*å§‹ç‚¹ã®æ±ºå®š(xåº§æ¨™)*/
 	sub = data.x - search_area / 2;
-	if (sub < 0){/*‰æ‘œƒTƒCƒY‚æ‚è‚Í‚İo‚½‚ç*/
+	if (sub < 0){/*ç”»åƒã‚µã‚¤ã‚ºã‚ˆã‚Šã¯ã¿å‡ºãŸã‚‰*/
 		startPoint.x = 0;
 		over = sub*-1;
 	}
@@ -598,57 +599,57 @@ int Bresenhams_line_algorithm(IplImage* img, Point data){
 		startPoint.x = data.x - search_area / 2;
 		over = 0;
 	}
-	/*I“_‚ÌŒˆ’è(xÀ•W)*/
+	/*çµ‚ç‚¹ã®æ±ºå®š(xåº§æ¨™)*/
 	endPoint.x = startPoint.x + search_area + over;
-	if (endPoint.x>640){/*‰æ‘œƒTƒCƒY‚æ‚è‚Í‚İo‚½‚ç*/
+	if (endPoint.x>640){/*ç”»åƒã‚µã‚¤ã‚ºã‚ˆã‚Šã¯ã¿å‡ºãŸã‚‰*/
 		endPoint.x = 640;
 	}
 
 	for (angle = -20; angle <21; angle++){
-		//ofs << "ŒX‚«" << angle << endl;
+		//ofs << "å‚¾ã" << angle << endl;
 		max = 0;
 		min = 0;
-		for (j = -10; j < 11; j++){/*Ø•Ğ‚ÌˆÚ“®*/
+		for (j = -10; j < 11; j++){/*åˆ‡ç‰‡ã®ç§»å‹•*/
 			sum = 0;
-			/*n“_‚ÌŒˆ’è(yÀ•W)*/
+			/*å§‹ç‚¹ã®æ±ºå®š(yåº§æ¨™)*/
 			if (angle == 0){
 				startPoint.y = data.y + j;
 			}
 			else{
 				startPoint.y = data.y + ((startPoint.x - data.x) / inc_y_table(angle)) + j;
 			}
-			/*I“_‚ÌŒˆ’è(yÀ•W)*/
+			/*çµ‚ç‚¹ã®æ±ºå®š(yåº§æ¨™)*/
 			if (angle == 0){
 				endPoint.y = data.y + j;
 			}
 			else{
 				endPoint.y = data.y + ((endPoint.x - data.x) / inc_y_table(angle)) + j;
 			}
-			//cout << "n“_(" << startPoint.x - data.x << "," << startPoint.y - data.y << ")" 
-			//<< " " << "I“_(" << endPoint.x - data.x << "," << endPoint.y - data.y<< ")" << endl;
-			/*ŒX‚«‚Ì•ûŒüŒˆ’è*/
+			//cout << "å§‹ç‚¹(" << startPoint.x - data.x << "," << startPoint.y - data.y << ")" 
+			//<< " " << "çµ‚ç‚¹(" << endPoint.x - data.x << "," << endPoint.y - data.y<< ")" << endl;
+			/*å‚¾ãã®æ–¹å‘æ±ºå®š*/
 			dx = (endPoint.x - data.x) - (startPoint.x - data.x);
 			dy = (endPoint.y - data.y) - (startPoint.y - data.y);
 			//cout <<dy<<","<<dx<<endl;
 			if (((double)dy / (double)dx)>0){
 				quadrant = 1;
-				/*cout << "ŒX‚«³" << endl;*/
+				/*cout << "å‚¾ãæ­£" << endl;*/
 			}
 			else {
 				quadrant = 2;
-				/*cout << "ŒX‚«•‰" << endl;*/
+				/*cout << "å‚¾ãè² " << endl;*/
 			}
 			/*cout << "quadrant=" << quadrant << endl;*/
-			/*ƒuƒŒƒ[ƒ“ƒnƒ€‚ÌƒAƒ‹ƒSƒŠƒYƒ€*/
-			/*n“_‚ÌŒvZ*/
+			/*ãƒ–ãƒ¬ã‚¼ãƒ³ãƒãƒ ã®ã‚¢ãƒ«ã‚´ãƒªã‚ºãƒ */
+			/*å§‹ç‚¹æ™‚ã®è¨ˆç®—*/
 			D = 2 * dy - dx;
 			y = startPoint.y;
 			//cout << startPoint.x << " " << startPoint.y << endl;
 			sum += (uchar)img->imageData[img->widthStep *startPoint.y + startPoint.x];
-			/*ŒX‚«‚É‰‚¶‚½ˆ—*/
+			/*å‚¾ãã«å¿œã˜ãŸå‡¦ç†*/
 			switch (quadrant)
 			{
-			case 1:/*ŒX‚«³*/
+			case 1:/*å‚¾ãæ­£*/
 				for (x = startPoint.x + 1; x < endPoint.x + 1; x++){
 					if (D>0){
 						y = y + 1;
@@ -662,7 +663,7 @@ int Bresenhams_line_algorithm(IplImage* img, Point data){
 					//cout << "D=" << D << "x=" << x << "y=" << y << endl;
 				}
 				break;
-			case 2:/*ŒX‚«•‰*/
+			case 2:/*å‚¾ãè² */
 				for (x = startPoint.x + 1; x < endPoint.x + 1; x++){
 					if (D>0){
 						y = y - 1;
@@ -706,8 +707,8 @@ void bobsort(totalData x[], int n){
 	totalData temp;
 	for (int i = 0; i < n - 1; i++) {
 		for (int j = n - 1; j > i; j--) {
-			if (x[j - 1].total < x[j].total) {  /* ‘O‚Ì—v‘f‚Ì•û‚ª‘å‚«‚©‚Á‚½‚ç */
-				temp = x[j];        /* ŒğŠ·‚·‚é */
+			if (x[j - 1].total < x[j].total) {  /* å‰ã®è¦ç´ ã®æ–¹ãŒå¤§ãã‹ã£ãŸã‚‰ */
+				temp = x[j];        /* äº¤æ›ã™ã‚‹ */
 				x[j] = x[j - 1];
 				x[j - 1] = temp;
 			}
@@ -738,7 +739,7 @@ int cutout(IplImage* threshold_img, cutData *cut)
 		pnow->tm_year + 1900, pnow->tm_mon + 1, pnow->tm_mday, pnow->tm_hour, pnow->tm_min);
 	ofstream ofs(cutData_fileName);
 
-	/*y•ûŒü*/
+	/*yæ–¹å‘*/
 	y_th = threshold_img->width * 255;
 	for (int j = 0; j < threshold_img->width; j++){
 		sum += (uchar)threshold_img->imageData[threshold_img->widthStep * 0 + j];
@@ -785,7 +786,7 @@ int cutout(IplImage* threshold_img, cutData *cut)
 
 	cvSetImageROI(threshold_img, cvRect(0, cut->y, rough_cut_area_hight, cut->hight));
 
-	/*x•ûŒü*/
+	/*xæ–¹å‘*/
 	for (int i = 0; i < threshold_img->width; i++){
 		sum = 0;
 		for (int j = cut->y; j < cut->hight + cut->y; j++){
@@ -803,7 +804,7 @@ int cutout(IplImage* threshold_img, cutData *cut)
 			bcount++;
 			flag = 0;
 		}
-		//‰E’[‚Ìˆ—
+		//å³ç«¯ã®å‡¦ç†
 		if (i == threshold_img->width - 1 && flag == 1){
 			bank[bcount].total = count;
 			count = 0;
@@ -818,7 +819,7 @@ int cutout(IplImage* threshold_img, cutData *cut)
 		ofs << bank[i].x << " " << bank[i].total << endl;
 	}
 
-	//’[‚ğœŠO
+	//ç«¯ã‚’é™¤å¤–
 	if (bank[0].x - bank[0].total == 0) {
 		edge[0] = bank[0];
 		bank[0].total = 0;
@@ -830,7 +831,7 @@ int cutout(IplImage* threshold_img, cutData *cut)
 		bank[bcount - 1].x = 0;
 	}
 
-	//ƒoƒuƒ‹ƒ\[ƒg
+	//ãƒãƒ–ãƒ«ã‚½ãƒ¼ãƒˆ
 	bobsort(bank, bcount);
 
 	//cout << "AfterSort" << endl;
@@ -839,7 +840,7 @@ int cutout(IplImage* threshold_img, cutData *cut)
 		//cout << "x=" << bank[i].x << " , " << "total=" << bank[i].total << endl;
 		ofs << bank[i].x << " " << bank[i].total << endl;
 	}
-	//start‚ÌŒˆ’è
+	//startã®æ±ºå®š
 	start.total = 0;
 	start.x = 0;
 	if (bank[0].x < rough_cut_area_width / 2){
@@ -860,7 +861,7 @@ int cutout(IplImage* threshold_img, cutData *cut)
 	//cout << "start=" << start.x << " , " << "end=" << end.x << endl;
 
 	if (start.x == 0 || start.x>rough_cut_area_width / 2) start = edge[0];
-	//end‚ÌŒˆ’è
+	//endã®æ±ºå®š
 	end.total = 0;
 	end.x = rough_cut_area_width;
 	if (bank[0].x > rough_cut_area_width / 2){
@@ -957,24 +958,24 @@ void Bing_Translator(char * in_Text, char *outText)
 
 
 void meanShift_init(){
-	//è‡’l
+	//é–¾å€¤
 	hsv_threshold.S_min = 30;
 	hsv_threshold.V_max = 240;
 	hsv_threshold.V_min = 30;
 	cv::namedWindow("Histogram");
 	
-	//F’ÇÕ‚Ìİ’è
+	//è‰²è¿½è·¡ã®è¨­å®š
 	Mat track_color_img = (cv::Mat_<float>(16, 1) << 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	
-	//’ÇÕF‚ÌƒqƒXƒgƒOƒ‰ƒ€
+	//è¿½è·¡è‰²ã®ãƒ’ã‚¹ãƒˆã‚°ãƒ©ãƒ 
 	Mat histimg = cv::Mat::zeros(200, 320, CV_8UC3);
 	int hsize = 16;
 	
-	//ƒqƒXƒgƒOƒ‰ƒ€‚ğŒvZ
+	//ãƒ’ã‚¹ãƒˆã‚°ãƒ©ãƒ ã‚’è¨ˆç®—
 	meanshift_hist = track_color_img;
 	//cout << meanshift_hist << endl;
 	
-	//•\¦—p‚ÉRGB‚É•ÏŠ·
+	//è¡¨ç¤ºç”¨ã«RGBã«å¤‰æ›
 	histimg = cv::Scalar::all(0);
 	int binW = histimg.cols / hsize;
 	cv::Mat buf(1, hsize, CV_8UC3);
@@ -983,7 +984,7 @@ void meanShift_init(){
 	}
 	cv::cvtColor(buf, buf, cv::COLOR_HSV2BGR);
 	
-	//ƒqƒXƒgƒOƒ‰ƒ€‚ğ•`‰æ
+	//ãƒ’ã‚¹ãƒˆã‚°ãƒ©ãƒ ã‚’æç”»
 	for (int i = 0; i < hsize; i++) {
 		int val = cv::saturate_cast<int>(meanshift_hist.at<float>(i)*histimg.rows / 255);
 		cv::rectangle(histimg, cv::Point(i*binW, histimg.rows), cv::Point((i + 1)*binW, histimg.rows - val), cv::Scalar(buf.at<cv::Vec3b>(i)), -1, 8);
@@ -1001,20 +1002,20 @@ void meanShift(Mat in_frame,Point *Notice_coordinates){
 	static int count=0;
 	const float* phranges = meanshift_hranges;
 	
-	//HSV‚É•ÏŠ·
+	//HSVã«å¤‰æ›
 	cv::Mat hsv;
 	cv::cvtColor(in_frame, hsv, cv::COLOR_BGR2HSV);
-	// è‡’lˆ—
+	// é–¾å€¤å‡¦ç†
 	cv::Mat mask;
 	cv::Scalar lower(0, hsv_threshold.S_min, MIN(hsv_threshold.V_min, hsv_threshold.V_max));
 	cv::Scalar upper(180, 256, MAX(hsv_threshold.V_min, hsv_threshold.V_max));
 	cv::inRange(hsv, lower, upper, mask);
-	// Hue‚¾‚¯’Šo
+	// Hueã ã‘æŠ½å‡º
 	int ch[] = { 0, 0 };
 	cv::Mat hue(hsv.size(), hsv.depth());
 	mixChannels(&hsv, 1, &hue, 1, ch, 1);
 	//cout << hsv.cols << " " << hsv.rows << endl;
-	////ƒoƒbƒNƒvƒƒWƒFƒNƒVƒ‡ƒ“
+	////ãƒãƒƒã‚¯ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ã‚·ãƒ§ãƒ³
 	cv::Mat backproj;
 	cv::calcBackProject(&hue, 1, 0, meanshift_hist, backproj, &phranges);
 	backproj &= mask;
@@ -1023,7 +1024,7 @@ void meanShift(Mat in_frame,Point *Notice_coordinates){
 	cv::imshow("test", mask);
 	waitKey(0);*/
 
-	// CamShiftƒAƒ‹ƒSƒŠƒYƒ€
+	// CamShiftã‚¢ãƒ«ã‚´ãƒªã‚ºãƒ 
 	cv::RotatedRect trackBox = cv::CamShift(backproj, trackWindow, cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 10, 1));
 	/*cout << trackBox.angle << " " << trackBox.size << endl;
 	cout << Notice_coordinates.x <<" "<<Notice_coordinates.y << endl;*/
@@ -1034,14 +1035,14 @@ void meanShift(Mat in_frame,Point *Notice_coordinates){
 		count = 0;
 	}
 	before_center = trackBox.center;
-	// •\¦
+	// è¡¨ç¤º
 	ellipse(in_frame, trackBox, cv::Scalar(0, 0, 255), 3, 16); // cv::LINE_AA=16
-	//–îˆó‚ÌI“_ŒvZ
+	//çŸ¢å°ã®çµ‚ç‚¹è¨ˆç®—
 	Point end;
 	Notice_coordinates->x = trackBox.center.x + ((100 + trackBox.size.height / 2) * cos(trackBox.angle*(M_PI / 180) + (M_PI) / 2));
 	Notice_coordinates->y = trackBox.center.y + ((100 + trackBox.size.height / 2) * sin(trackBox.angle*(M_PI / 180) + (M_PI) / 2));
 	arrowedLine(in_frame, trackBox.center, *Notice_coordinates, cv::Scalar(200, 0, 0), 5, CV_AA);	
-	// ‘I‘ğ—Ìˆæ‚ğ•\¦
+	// é¸æŠé ˜åŸŸã‚’è¡¨ç¤º
 	if (data.selectObject && data.selection.width > 0 && data.selection.height > 0) {
 		cv::Rect roi = data.selection & cv::Rect(0, 0, in_frame.cols, in_frame.rows);
 		cv::Mat tmp(in_frame, roi);
@@ -1053,13 +1054,13 @@ BOOL ConvUtf8toSJis(BYTE* pSource, BYTE* pDist, int* pSize)
 {
 	*pSize = 0;
 
-	//UTF-8‚©‚çUTF-16‚Ö•ÏŠ·
+	//UTF-8ã‹ã‚‰UTF-16ã¸å¤‰æ›
 	const int nSize = ::MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)pSource, -1, NULL, 0);
 
 	BYTE* buffUtf16 = new BYTE[nSize * 2 + 2];
 	::MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)pSource, -1, (LPWSTR)buffUtf16, nSize);
 
-	//UTF-16‚©‚çShift-JIS‚Ö•ÏŠ·
+	//UTF-16ã‹ã‚‰Shift-JISã¸å¤‰æ›
 	const int nSizeSJis = ::WideCharToMultiByte(CP_ACP, 0, (LPCWSTR)buffUtf16, -1, NULL, 0, NULL, NULL);
 	if (!pDist){
 		*pSize = nSizeSJis;
@@ -1094,22 +1095,22 @@ void check_OCR()
 
 	int k = 10;
 
-	//ƒeƒXƒgƒf[ƒ^
+	//ãƒ†ã‚¹ãƒˆãƒ‡ãƒ¼ã‚¿
 	test_img = cvLoadImage("example1.bmp", CV_LOAD_IMAGE_ANYCOLOR);
-	/*‰æ‘œ•\¦*/
+	/*ç”»åƒè¡¨ç¤º*/
 	//cvNamedWindow("Image", CV_WINDOW_AUTOSIZE);
 	//cvShowImage("Image", test_img);
 	//cvWaitKey(0);
 	//cvDestroyWindow("Image");
 
-	//ƒfƒBƒŒƒNƒgƒŠ‚Ìì¬
+	//ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã®ä½œæˆ
 	makeDirectory("check_OCR");
 
-	//‰æ‘œŠg‘å
-	resize_img1 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	resize_img2 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	resize_img3 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	resize_img4 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
+	//ç”»åƒæ‹¡å¤§
+	resize_img1 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	resize_img2 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	resize_img3 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	resize_img4 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
 
 	cv::resize((Mat)test_img, (Mat)resize_img1, cvSize(test_img->width * 4, test_img->height * 4), INTER_NEAREST);
 	cv::resize((Mat)test_img, (Mat)resize_img2, cvSize(test_img->width * 4, test_img->height * 4), INTER_LINEAR);
@@ -1130,14 +1131,14 @@ void check_OCR()
 
 	ofs << result_Text << " , " << result_Text1 << " , " << result_Text2 << " , " << result_Text3 << " , " << result_Text4  << endl;
 
-	//‚Ú‚©‚µ
+	//ã¼ã‹ã—
 	gaussTest_img = cvCreateImage(cvSize(test_img->width, test_img->height), IPL_DEPTH_8U, 1);
 	cv::GaussianBlur((Mat)test_img, (Mat)gaussTest_img, cv::Size(5, 5), 1.5, 1.5);
 
-	g_resize_img1 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	//g_resize_img2 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	//g_resize_img3 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	//g_resize_img4 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
+	g_resize_img1 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	//g_resize_img2 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	//g_resize_img3 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	//g_resize_img4 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
 
 	cv::resize((Mat)gaussTest_img, (Mat)g_resize_img1, cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), INTER_NEAREST);
 	//cv::resize((Mat)gaussTest_img, (Mat)g_resize_img2, cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), INTER_LINEAR);
@@ -1158,7 +1159,7 @@ void check_OCR()
 
 	ofs << g_result_Text << " , " << g_result_Text1  << endl;
 
-	//‘N‰s‰»
+	//é®®é‹­åŒ–
 	gaussTest_img2 = cvCreateImage(cvSize(test_img->width, test_img->height), IPL_DEPTH_8U, 1);
 	cv::GaussianBlur((Mat)gaussTest_img, (Mat)gaussTest_img2, cv::Size(3, 3), 6,6);
 	sub_test_img = cvCreateImage(cvSize(test_img->width, test_img->height), IPL_DEPTH_8U, 1);
@@ -1166,21 +1167,21 @@ void check_OCR()
 	(Mat)sub_test_img = (Mat)gaussTest_img - (Mat)gaussTest_img2;
 	(Mat)unsharp_test_img = (Mat)gaussTest_img + ((Mat)sub_test_img * 15);
 
-	g_resize_img1_2=cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{;
+	g_resize_img1_2=cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€;
 	cv::GaussianBlur((Mat)g_resize_img1, (Mat)g_resize_img1_2, cv::Size(11, 11), 6, 6);
 	IplImage *sub_test_img2 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);
 	IplImage *unsharp_test_img2 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);
 	(Mat)sub_test_img2 = (Mat)g_resize_img1 - (Mat)g_resize_img1_2;
 	(Mat)unsharp_test_img2 = (Mat)g_resize_img1 + ((Mat)sub_test_img2 * 60);
-	//unsharp_resize_img1 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	//unsharp_resize_img2 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	//unsharp_resize_img3 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	//unsharp_resize_img4 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
+	//unsharp_resize_img1 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	//unsharp_resize_img2 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	//unsharp_resize_img3 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	//unsharp_resize_img4 = cvCreateImage(cvSize(test_img->width * 4, test_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
 	//unsharp_gaussTest_img = cvCreateImage(cvSize(test_img->width, test_img->height), IPL_DEPTH_8U, 1);
-	//unsharp_g_resize_img1 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	//unsharp_g_resize_img2 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	//unsharp_g_resize_img3 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
-	//unsharp_g_resize_img4 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//c‰¡4”{
+	//unsharp_g_resize_img1 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	//unsharp_g_resize_img2 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	//unsharp_g_resize_img3 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
+	//unsharp_g_resize_img4 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//ç¸¦æ¨ª4å€
 
 	//cv_UnsharpMasking(test_img, unsharp_test_img,k);
 	//cv_UnsharpMasking(resize_img1, unsharp_resize_img1, k);
@@ -1222,16 +1223,16 @@ void check_OCR()
 	//ofs << unsharp_result_Text << " , " << unsharp_result_Text1 << " , " << unsharp_result_Text2 << " , " << unsharp_result_Text3 << " , " << unsharp_result_Text4 << endl;
 	//ofs << unsharp_g_result_Text << " , " << unsharp_g_result_Text1 << " , " << unsharp_g_result_Text2 << " , " << unsharp_g_result_Text3 << " , " << unsharp_g_result_Text4 << endl;
 	ofs << unsharp_result_Text << "," << unsharp_result_Text2 << endl;
-	cout << "I—¹" << endl;
+	cout << "çµ‚äº†" << endl;
 }
 
 void testAR()
 {
 	int cap_count = 0;
 	///////////////////////////////////////////  
-	//‰æ‘œ‚É•\¦‚³‚¹‚é—§•û‘Ì‚Ì€”õB  
+	//ç”»åƒã«è¡¨ç¤ºã•ã›ã‚‹ç«‹æ–¹ä½“ã®æº–å‚™ã€‚  
 
-	#define MARKER_SIZE (20)       /* ƒ}[ƒJ[‚ÌŠO‘¤‚Ì1•Ó‚ÌƒTƒCƒY[mm] */  
+	#define MARKER_SIZE (20)       /* ãƒãƒ¼ã‚«ãƒ¼ã®å¤–å´ã®1è¾ºã®ã‚µã‚¤ã‚º[mm] */  
 	//float in_data[] = {
 	//	0, 0, 0, 
 	//	0,0, 0,
@@ -1268,14 +1269,14 @@ void testAR()
 
 	CvMat *rotation = cvCreateMat(1, 3, CV_32FC1);
 	CvMat *translation = cvCreateMat(1, 3, CV_32FC1);
-	//—§•û‘Ì¶¬—p  
-	CvMat *srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//Œ³‚Ì3ŸŒ³À•W  
-	CvMat *dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//‰æ–Ê‚É“Š‰e‚µ‚½‚Æ‚«‚Ì2ŸŒ³À•W  
-	CvPoint2D32f *corners = (CvPoint2D32f *)cvAlloc(sizeof (CvPoint2D32f)* 4);//lŠpŒ`  
+	//ç«‹æ–¹ä½“ç”Ÿæˆç”¨  
+	CvMat *srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//å…ƒã®3æ¬¡å…ƒåº§æ¨™  
+	CvMat *dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//ç”»é¢ã«æŠ•å½±ã—ãŸã¨ãã®2æ¬¡å…ƒåº§æ¨™  
+	CvPoint2D32f *corners = (CvPoint2D32f *)cvAlloc(sizeof (CvPoint2D32f)* 4);//å››è§’å½¢  
 
 	CvPoint3D32f baseMarkerPoints[4];
-	//lŠp‚ª•¨—‹óŠÔã‚Å‚Í‚Ç‚ÌÀ•W‚É‚È‚é‚©‚ğw’è‚·‚éB  
-	//ƒR[ƒi[      ÀÛ‚ÌÀ•W(mm)  
+	//å››è§’ãŒç‰©ç†ç©ºé–“ä¸Šã§ã¯ã©ã®åº§æ¨™ã«ãªã‚‹ã‹ã‚’æŒ‡å®šã™ã‚‹ã€‚  
+	//ã‚³ãƒ¼ãƒŠãƒ¼      å®Ÿéš›ã®åº§æ¨™(mm)  
 	//   X   Y     X    Y    
 	//   0   0   = 0    0  
 	//   0   1   = 0    20  
@@ -1296,7 +1297,7 @@ void testAR()
 	baseMarkerPoints[3].y = (float)0 * MARKER_SIZE;
 	baseMarkerPoints[3].z = 0.0;
 
-	//²‚ÌŠî–{À•W‚ğ‹‚ß‚éB  
+	//è»¸ã®åŸºæœ¬åº§æ¨™ã‚’æ±‚ã‚ã‚‹ã€‚  
 	for (i = 0; i< 4; i++)
 	{
 		switch (i)
@@ -1320,9 +1321,9 @@ void testAR()
 
 		}
 	}
-	//–îˆó‚ÌŠî–{À•W‚ğ‹‚ß‚éB
-	CvMat *arrow_srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//Œ³‚Ì3ŸŒ³À•W  
-	CvMat *arrow_dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//‰æ–Ê‚É“Š‰e‚µ‚½‚Æ‚«‚Ì2ŸŒ³À•W  
+	//çŸ¢å°ã®åŸºæœ¬åº§æ¨™ã‚’æ±‚ã‚ã‚‹ã€‚
+	CvMat *arrow_srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//å…ƒã®3æ¬¡å…ƒåº§æ¨™  
+	CvMat *arrow_dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//ç”»é¢ã«æŠ•å½±ã—ãŸã¨ãã®2æ¬¡å…ƒåº§æ¨™  
 	for (i = 0; i< 2; i++)
 	{
 		switch (i)
@@ -1338,14 +1339,14 @@ void testAR()
 		}
 	}
 
-	///²‚Ì€”õ@‚±‚±‚Ü‚Å  
+	///è»¸ã®æº–å‚™ã€€ã“ã“ã¾ã§  
 	//////////////////////////////////// 
 
 	IplImage img;
 	IplImage gray_img;
 	IplImage* gray_img_Contour;
 
-	//ƒtƒHƒ“ƒg‚Ìİ’è  
+	//ãƒ•ã‚©ãƒ³ãƒˆã®è¨­å®š  
 	CvFont dfont;
 	float hscale = 0.5f;
 	float vscale = 0.5f;
@@ -1358,9 +1359,9 @@ void testAR()
 	float axhscale = 0.8f;
 	float axvscale = 0.8f;
 	cvInitFont(&axisfont, CV_FONT_HERSHEY_SIMPLEX, axhscale, axvscale, italicscale, thickness, CV_AA);
-	//—ÖŠs•Û‘¶—p‚ÌƒXƒgƒŒ[ƒW‚ğŠm•Û  
-	CvMemStorage *storage = cvCreateMemStorage(0);//—ÖŠs—p  
-	CvMemStorage *storagepoly = cvCreateMemStorage(0);//—ÖŠs‹ß—ƒ|ƒŠƒSƒ“—p  
+	//è¼ªéƒ­ä¿å­˜ç”¨ã®ã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸ã‚’ç¢ºä¿  
+	CvMemStorage *storage = cvCreateMemStorage(0);//è¼ªéƒ­ç”¨  
+	CvMemStorage *storagepoly = cvCreateMemStorage(0);//è¼ªéƒ­è¿‘ä¼¼ãƒãƒªã‚´ãƒ³ç”¨  
 
 	CvSeq *firstcontour = NULL;
 	CvSeq *polycontour = NULL;
@@ -1383,13 +1384,13 @@ void testAR()
 	cvNamedWindow(" marker_inside", CV_WINDOW_AUTOSIZE);
 	cvNamedWindow(" capture_image", CV_WINDOW_AUTOSIZE);
 
-	//ƒ}ƒXƒN‰æ‘œ‚Ì“Ç‚İ‚İB  
-	//ŒŸo‚µ‚½ƒ}[ƒJ[‚ÆA‚±‚Ì‰æ‘œ‚ÌAND‚ğæ‚èAcvCountNonZero‚ªˆê”Ô‘å‚«‚©‚Á‚½‚à‚Ì‚ğƒ}[ƒJ[‚ÌŒü‚«‚Æ‚·‚éB  
+	//ãƒã‚¹ã‚¯ç”»åƒã®èª­ã¿è¾¼ã¿ã€‚  
+	//æ¤œå‡ºã—ãŸãƒãƒ¼ã‚«ãƒ¼ã¨ã€ã“ã®ç”»åƒã®ANDã‚’å–ã‚Šã€cvCountNonZeroãŒä¸€ç•ªå¤§ãã‹ã£ãŸã‚‚ã®ã‚’ãƒãƒ¼ã‚«ãƒ¼ã®å‘ãã¨ã™ã‚‹ã€‚  
 	IplImage * mask0 = cvLoadImage("mask0deg.bmp", 0);
 	IplImage * mask90 = cvLoadImage("mask90deg.bmp", 0);
 	IplImage * mask180 = cvLoadImage("mask180deg.bmp", 0);
 	IplImage * mask270 = cvLoadImage("mask270deg.bmp", 0);
-	IplImage * tempmask = cvCloneImage(mask0);//ì‹Æ—p  
+	IplImage * tempmask = cvCloneImage(mask0);//ä½œæ¥­ç”¨  
 
 	cv::VideoCapture cap;
 	cv::Size cap_size(640, 480);
@@ -1398,7 +1399,7 @@ void testAR()
 
 	cap.open(0);
 	if (!cap.isOpened()) {
-		cout << "ƒJƒƒ‰‚Ì‰Šú‰»‚É¸”s‚µ‚Ü‚µ‚½" << endl;
+		cout << "ã‚«ãƒ¡ãƒ©ã®åˆæœŸåŒ–ã«å¤±æ•—ã—ã¾ã—ãŸ" << endl;
 		//return -1;
 	}
 	waitKey(1000);
@@ -1406,7 +1407,7 @@ void testAR()
 	cv::Mat original_frame, copy_frame;
 	cv::Mat gray_Mat;
 	cap >> original_frame;
-	if (original_frame.empty()) cout << "ƒJƒƒ‰‚Ì‰Šú‰»‚É¸”s‚µ‚Ü‚µ‚½" << endl;;
+	if (original_frame.empty()) cout << "ã‚«ãƒ¡ãƒ©ã®åˆæœŸåŒ–ã«å¤±æ•—ã—ã¾ã—ãŸ" << endl;;
 	original_frame.copyTo(copy_frame);
 	cv::cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
 	gray_img = gray_Mat;
@@ -1420,21 +1421,21 @@ void testAR()
 	{
 		cap >> original_frame;
 		original_frame.copyTo(copy_frame);
-		//ƒOƒŒ[ƒXƒP[ƒ‹‰»
+		//ã‚°ãƒ¬ãƒ¼ã‚¹ã‚±ãƒ¼ãƒ«åŒ–
 		cv::cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
 		img = original_frame;
 		gray_img = gray_Mat;
-		//•½ŠŠ‰»
+		//å¹³æ»‘åŒ–
 		cvSmooth(&gray_img, &gray_img, CV_GAUSSIAN, 3);
-		//“ñ’l‰»
+		//äºŒå€¤åŒ–
 		cvThreshold(&gray_img, &gray_img, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-		//”½“]  
+		//åè»¢  
 		cvNot(&gray_img, &gray_img);
-		//—ÖŠs’Šo
+		//è¼ªéƒ­æŠ½å‡º
 		int contourCount = 0;
 		cvCopy(&gray_img, gray_img_Contour);
 		contourCount = cvFindContours(gray_img_Contour, storage, &firstcontour, sizeof (CvContour), CV_RETR_CCOMP);
-		//—ÖŠs‚É‹ß—‚µ‚Ä‚¢‚éƒ|ƒŠƒSƒ“‚ğ‹‚ß‚éiÅ¬’¼ü‹——£3ƒsƒNƒZƒ‹‚Éİ’èj
+		//è¼ªéƒ­ã«è¿‘ä¼¼ã—ã¦ã„ã‚‹ãƒãƒªã‚´ãƒ³ã‚’æ±‚ã‚ã‚‹ï¼ˆæœ€å°ç›´ç·šè·é›¢3ãƒ”ã‚¯ã‚»ãƒ«ã«è¨­å®šï¼‰
 		polycontour = cvApproxPoly(firstcontour, sizeof(CvContour), storagepoly, CV_POLY_APPROX_DP, 3, 1);
 		cout << polycontour->total << endl;
 		//waitKey();
@@ -1460,17 +1461,17 @@ void testAR()
 						//	cout << "x=" << tmp_pnt[i].x << "y= " << tmp_pnt[i].y << endl;
 						//}
 
-						//lŠp‚Ìî•ñ‚ğ“n‚·B‚Ç‚¿‚ç‚ğŒü‚¢‚Ä‚¢‚é‚©‚Í‚Ü‚¾‚í‚©‚ç‚È‚¢  
+						//å››è§’ã®æƒ…å ±ã‚’æ¸¡ã™ã€‚ã©ã¡ã‚‰ã‚’å‘ã„ã¦ã„ã‚‹ã‹ã¯ã¾ã ã‚ã‹ã‚‰ãªã„  
 						cvGetPerspectiveTransform(tmp_pnt, dst_pnt, map_matrix);
-						//marker_insideiƒ}[ƒJ[‚Ì“à‘¤‚¾‚¯‚ğ’Šo‚µA³•ûŒ`‚É“§‹•ÏŠ·‚µ‚½‚à‚Ìj  
-						//‚ğAƒ}ƒXƒN‰æ‘œ‚ğw’è‚µ‚ÄˆêƒCƒ[ƒW‚ÉƒRƒs[B  
-						//ˆêƒCƒ[ƒW‚É”’‚¢“_‚ª‘½”‚ ‚ê‚ÎAƒ}ƒXƒN‰æ‘œ‚Æ“¯‚¶•ûŒü‚ğŒü‚¢‚Ä‚¢‚é‚±‚Æ‚É‚È‚éB  
+						//marker_insideï¼ˆãƒãƒ¼ã‚«ãƒ¼ã®å†…å´ã ã‘ã‚’æŠ½å‡ºã—ã€æ­£æ–¹å½¢ã«é€è¦–å¤‰æ›ã—ãŸã‚‚ã®ï¼‰  
+						//ã‚’ã€ãƒã‚¹ã‚¯ç”»åƒã‚’æŒ‡å®šã—ã¦ä¸€æ™‚ã‚¤ãƒ¡ãƒ¼ã‚¸ã«ã‚³ãƒ”ãƒ¼ã€‚  
+						//ä¸€æ™‚ã‚¤ãƒ¡ãƒ¼ã‚¸ã«ç™½ã„ç‚¹ãŒå¤šæ•°ã‚ã‚Œã°ã€ãƒã‚¹ã‚¯ç”»åƒã¨åŒã˜æ–¹å‘ã‚’å‘ã„ã¦ã„ã‚‹ã“ã¨ã«ãªã‚‹ã€‚  
 						cvWarpPerspective(&gray_img, marker_inside, map_matrix, CV_INTER_LINEAR + CV_WARP_FILL_OUTLIERS, cvScalarAll(0));
 						cv::imshow("marker_inside", (Mat)marker_inside);
 						int notzeroCount = 0;
 
 						int maxCount = 0;
-						int markerDirection = 0;//Šî–{‚Í0deg  
+						int markerDirection = 0;//åŸºæœ¬ã¯0deg  
 						cvResize(marker_inside, marker_inside_zoom);
 						//cout << "width=" << tempmask->width << "height=" << tempmask->height << endl;
 						//waitKey();
@@ -1515,7 +1516,7 @@ void testAR()
 						cvZero(tempmask);
 
 						cvShowImage(" marker_inside" , marker_inside_zoom);
-						//lŠp‚ÌŒü‚«‚ğ”½‰f‚³‚¹‚éB  
+						//å››è§’ã®å‘ãã‚’åæ˜ ã•ã›ã‚‹ã€‚  
 						if (markerDirection == 0) {
 							src_pnt[0].x = tmp_pnt[0].x;
 							src_pnt[0].y = tmp_pnt[0].y;
@@ -1559,21 +1560,21 @@ void testAR()
 						}
 						//cvPutText(&img,"0", cvPoint((int)src_pnt[0].x,(int)src_pnt[0].y), &dfont, CV_RGB(255, 0, 255));  
 						//cvPutText(&img,"1", cvPoint((int)src_pnt[1].x,(int)src_pnt[1].y), &dfont, CV_RGB(255, 0, 255)); 
-						//ƒ}[ƒJ[‚ÌƒCƒ[ƒWã‚Å‚ÌÀ•W‚ğİ’èB  
+						//ãƒãƒ¼ã‚«ãƒ¼ã®ã‚¤ãƒ¡ãƒ¼ã‚¸ä¸Šã§ã®åº§æ¨™ã‚’è¨­å®šã€‚  
 						cvInitMatHeader(&image_points, 4, 1, CV_32FC2, src_pnt);
-						//–îˆó‚ÌƒCƒ[ƒWã‚Å‚ÌÀ•W‚ğİ’è
+						//çŸ¢å°ã®ã‚¤ãƒ¡ãƒ¼ã‚¸ä¸Šã§ã®åº§æ¨™ã‚’è¨­å®š
 
-						//ƒ}[ƒJ[‚ÌŠî–{‚Æ‚È‚éÀ•W‚ğİ’è  
+						//ãƒãƒ¼ã‚«ãƒ¼ã®åŸºæœ¬ã¨ãªã‚‹åº§æ¨™ã‚’è¨­å®š  
 						cvInitMatHeader(&object_points, 4, 3, CV_32FC1, baseMarkerPoints);
 						
-						//ƒJƒƒ‰‚Ì“à•”’è”(intrinstic‚Ædistortion)‚©‚çArotation‚Ætranslation‚ğ‹‚ß‚é   
+						//ã‚«ãƒ¡ãƒ©ã®å†…éƒ¨å®šæ•°(intrinsticã¨distortion)ã‹ã‚‰ã€rotationã¨translationã‚’æ±‚ã‚ã‚‹   
 						cvFindExtrinsicCameraParams2(&object_points, &image_points, intrinsic, distortion, rotation, translation);
 
 						
-						//‹‚ß‚½‚à‚Ì‚ğg—p‚µ‚ÄAŒ»À‹óŠÔã‚ÌÀ•W‚ª‰æ–Êã‚¾‚Æ‚Ç‚ÌˆÊ’u‚É—ˆ‚é‚©‚ğŒvZ  
+						//æ±‚ã‚ãŸã‚‚ã®ã‚’ä½¿ç”¨ã—ã¦ã€ç¾å®Ÿç©ºé–“ä¸Šã®åº§æ¨™ãŒç”»é¢ä¸Šã ã¨ã©ã®ä½ç½®ã«æ¥ã‚‹ã‹ã‚’è¨ˆç®—  
 						cvProjectPoints2(srcPoints3D, rotation, translation, intrinsic, distortion, dstPoints2D);
 						cvProjectPoints2(arrow_srcPoints3D, rotation, translation, intrinsic, distortion, arrow_dstPoints2D);
-						//²‚ğ•`‰æ  
+						//è»¸ã‚’æç”»  
 						CvPoint startpoint;
 						CvPoint endpoint;
 						//for (int as = 0; as < 12;as++) {
@@ -1608,7 +1609,7 @@ void testAR()
 		char str[100];
 		int c = cvWaitKey(2);
 		if (c == 0x73)
-		{ // 's'ƒL[“ü—Í
+		{ // 's'ã‚­ãƒ¼å…¥åŠ›
 			sprintf(str, "AR_img%2d.png", cap_count);
 			cv::imwrite(str, (Mat)&img);
 			cap_count++;
@@ -1622,12 +1623,12 @@ void testAR()
 
 int Calibrate()
 {
-	#define IMAGE_NUM  (25)         /* ‰æ‘œ” */
-	#define PAT_ROW    (7)          /* ƒpƒ^[ƒ“‚Ìs” */
-	#define PAT_COL    (10)         /* ƒpƒ^[ƒ“‚Ì—ñ” */
+	#define IMAGE_NUM  (25)         /* ç”»åƒæ•° */
+	#define PAT_ROW    (7)          /* ãƒ‘ã‚¿ãƒ¼ãƒ³ã®è¡Œæ•° */
+	#define PAT_COL    (10)         /* ãƒ‘ã‚¿ãƒ¼ãƒ³ã®åˆ—æ•° */
 	#define PAT_SIZE   (PAT_ROW*PAT_COL)
 	#define ALL_POINTS (IMAGE_NUM*PAT_SIZE)
-	#define CHESS_SIZE (24.0)       /* ƒpƒ^[ƒ“1ƒ}ƒX‚Ì1•ÓƒTƒCƒY[mm] */
+	#define CHESS_SIZE (24.0)       /* ãƒ‘ã‚¿ãƒ¼ãƒ³1ãƒã‚¹ã®1è¾ºã‚µã‚¤ã‚º[mm] */
 
 	int i, j, k;
 	int corner_count, found;
@@ -1644,7 +1645,7 @@ int Calibrate()
 	CvMat *translation = cvCreateMat(1, 3, CV_32FC1);
 	CvMat *distortion = cvCreateMat(1, 4, CV_32FC1);
 
-	// (1)ƒLƒƒƒŠƒuƒŒ[ƒVƒ‡ƒ“‰æ‘œ‚Ì“Ç‚İ‚İ
+	// (1)ã‚­ãƒ£ãƒªãƒ–ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³ç”»åƒã®èª­ã¿è¾¼ã¿
 	for (i = 0; i < IMAGE_NUM; i++) {
 		char buf[32];
 		sprintf(buf, "calib_img/%02d.png", i);
@@ -1653,7 +1654,7 @@ int Calibrate()
 		}
 	}
 
-	// (2)3ŸŒ³‹óŠÔÀ•W‚Ìİ’è
+	// (2)3æ¬¡å…ƒç©ºé–“åº§æ¨™ã®è¨­å®š
 	for (i = 0; i < IMAGE_NUM; i++) {
 		for (j = 0; j < PAT_ROW; j++) {
 			for (k = 0; k < PAT_COL; k++) {
@@ -1665,7 +1666,7 @@ int Calibrate()
 	}
 	cvInitMatHeader(&object_points, ALL_POINTS, 3, CV_32FC1, objects);
 
-	// (3)ƒ`ƒFƒXƒ{[ƒhiƒLƒƒƒŠƒuƒŒ[ƒVƒ‡ƒ“ƒpƒ^[ƒ“j‚ÌƒR[ƒi[ŒŸo
+	// (3)ãƒã‚§ã‚¹ãƒœãƒ¼ãƒ‰ï¼ˆã‚­ãƒ£ãƒªãƒ–ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³ãƒ‘ã‚¿ãƒ¼ãƒ³ï¼‰ã®ã‚³ãƒ¼ãƒŠãƒ¼æ¤œå‡º
 	int found_num = 0;
 	cvNamedWindow("Calibration", CV_WINDOW_AUTOSIZE);
 	for (i = 0; i < IMAGE_NUM; i++) {
@@ -1678,7 +1679,7 @@ int Calibrate()
 		else {
 			fprintf(stderr, "fail\n");
 		}
-		// (4)ƒR[ƒi[ˆÊ’u‚ğƒTƒuƒsƒNƒZƒ‹¸“x‚ÉC³C•`‰æ
+		// (4)ã‚³ãƒ¼ãƒŠãƒ¼ä½ç½®ã‚’ã‚µãƒ–ãƒ”ã‚¯ã‚»ãƒ«ç²¾åº¦ã«ä¿®æ­£ï¼Œæç”»
 		IplImage *src_gray = cvCreateImage(cvGetSize(src_img[i]), IPL_DEPTH_8U, 1);
 		cvCvtColor(src_img[i], src_gray, CV_BGR2GRAY);
 		cvFindCornerSubPix(src_gray, &corners[i * PAT_SIZE], corner_count,
@@ -1695,17 +1696,17 @@ int Calibrate()
 	cvInitMatHeader(&image_points, ALL_POINTS, 1, CV_32FC2, corners);
 	cvInitMatHeader(&point_counts, IMAGE_NUM, 1, CV_32SC1, p_count);
 
-	// (5)“à•”ƒpƒ‰ƒ[ƒ^C˜c‚İŒW”‚Ì„’è
+	// (5)å†…éƒ¨ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ï¼Œæ­ªã¿ä¿‚æ•°ã®æ¨å®š
 	cvCalibrateCamera2(&object_points, &image_points, &point_counts, cvSize(640, 480), intrinsic, distortion);
 
-	// (6)ŠO•”ƒpƒ‰ƒ[ƒ^‚Ì„’è
+	// (6)å¤–éƒ¨ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã®æ¨å®š
 	CvMat sub_image_points, sub_object_points;
 	int base = 0;
 	cvGetRows(&image_points, &sub_image_points, base * PAT_SIZE, (base + 1) * PAT_SIZE);
 	cvGetRows(&object_points, &sub_object_points, base * PAT_SIZE, (base + 1) * PAT_SIZE);
 	cvFindExtrinsicCameraParams2(&sub_object_points, &sub_image_points, intrinsic, distortion, rotation, translation);
 
-	// (7)XMLƒtƒ@ƒCƒ‹‚Ö‚Ì‘‚«o‚µ
+	// (7)XMLãƒ•ã‚¡ã‚¤ãƒ«ã¸ã®æ›¸ãå‡ºã—
 	CvFileStorage *fs;
 	fs = cvOpenFileStorage("camera.xml", 0, CV_STORAGE_WRITE);
 	cvWrite(fs, "intrinsic", intrinsic);
@@ -1733,7 +1734,7 @@ void take_pic()
 	
 	cap.open(1);
 	if (!cap.isOpened()) {
-		cout << "ƒJƒƒ‰‚Ì‰Šú‰»‚É¸”s‚µ‚Ü‚µ‚½" << endl;
+		cout << "ã‚«ãƒ¡ãƒ©ã®åˆæœŸåŒ–ã«å¤±æ•—ã—ã¾ã—ãŸ" << endl;
 		//return -1;
 	}
 	cv::namedWindow("Capture");
@@ -1751,7 +1752,7 @@ void take_pic()
 		c = cvWaitKey(2);
 		cap >> original_frame;
 		cv::imshow("Capture", original_frame);
-		if (c == 0x73)// 's'ƒL[“ü—Í
+		if (c == 0x73)// 's'ã‚­ãƒ¼å…¥åŠ›
 		{ 
 			//for (int i = 0; i < 100;i++){
 				sprintf(cut_imgName, "%02d.bmp", pic_count);
@@ -1770,23 +1771,23 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 {
 	int cap_count = 0;
 	///////////////////////////////////////////  
-	//‰æ‘œ‚É•\¦‚³‚¹‚é—§•û‘Ì‚Ì€”õB  
+	//ç”»åƒã«è¡¨ç¤ºã•ã›ã‚‹ç«‹æ–¹ä½“ã®æº–å‚™ã€‚  
 
-	#define MARKER_SIZE (20)       /* ƒ}[ƒJ[‚ÌŠO‘¤‚Ì1•Ó‚ÌƒTƒCƒY[mm] */  
+	#define MARKER_SIZE (20)       /* ãƒãƒ¼ã‚«ãƒ¼ã®å¤–å´ã®1è¾ºã®ã‚µã‚¤ã‚º[mm] */  
 	int i, j, k;
 
-	//—§•û‘Ì¶¬—p  
-	CvMat *srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//Œ³‚Ì3ŸŒ³À•W  
-	CvMat *dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//‰æ–Ê‚É“Š‰e‚µ‚½‚Æ‚«‚Ì2ŸŒ³À•W  
-	CvPoint2D32f *corners = (CvPoint2D32f *)cvAlloc(sizeof (CvPoint2D32f)* 4);//lŠpŒ`  
+	//ç«‹æ–¹ä½“ç”Ÿæˆç”¨  
+	CvMat *srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//å…ƒã®3æ¬¡å…ƒåº§æ¨™  
+	CvMat *dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//ç”»é¢ã«æŠ•å½±ã—ãŸã¨ãã®2æ¬¡å…ƒåº§æ¨™  
+	CvPoint2D32f *corners = (CvPoint2D32f *)cvAlloc(sizeof (CvPoint2D32f)* 4);//å››è§’å½¢  
 
 	CvMat object_points;
 	CvMat image_points;
 	CvMat point_counts;
 
 	CvPoint3D32f baseMarkerPoints[4];
-	//lŠp‚ª•¨—‹óŠÔã‚Å‚Í‚Ç‚ÌÀ•W‚É‚È‚é‚©‚ğw’è‚·‚éB  
-	//ƒR[ƒi[      ÀÛ‚ÌÀ•W(mm)  
+	//å››è§’ãŒç‰©ç†ç©ºé–“ä¸Šã§ã¯ã©ã®åº§æ¨™ã«ãªã‚‹ã‹ã‚’æŒ‡å®šã™ã‚‹ã€‚  
+	//ã‚³ãƒ¼ãƒŠãƒ¼      å®Ÿéš›ã®åº§æ¨™(mm)  
 	//   X   Y     X    Y    
 	//   0   0   = 0    0  
 	//   0   1   = 0    20  
@@ -1807,7 +1808,7 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 	baseMarkerPoints[3].y = (float)0 * MARKER_SIZE;
 	baseMarkerPoints[3].z = 0.0;
 
-	//²‚ÌŠî–{À•W‚ğ‹‚ß‚éB  
+	//è»¸ã®åŸºæœ¬åº§æ¨™ã‚’æ±‚ã‚ã‚‹ã€‚  
 	for (i = 0; i< 4; i++)
 	{
 		switch (i)
@@ -1831,9 +1832,9 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 
 		}
 	}
-	//–îˆó‚ÌŠî–{À•W‚ğ‹‚ß‚éB
-	CvMat *arrow_srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//Œ³‚Ì3ŸŒ³À•W  
-	CvMat *arrow_dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//‰æ–Ê‚É“Š‰e‚µ‚½‚Æ‚«‚Ì2ŸŒ³À•W  
+	//çŸ¢å°ã®åŸºæœ¬åº§æ¨™ã‚’æ±‚ã‚ã‚‹ã€‚
+	CvMat *arrow_srcPoints3D = cvCreateMat(4, 1, CV_32FC3);//å…ƒã®3æ¬¡å…ƒåº§æ¨™  
+	CvMat *arrow_dstPoints2D = cvCreateMat(4, 1, CV_32FC2);//ç”»é¢ã«æŠ•å½±ã—ãŸã¨ãã®2æ¬¡å…ƒåº§æ¨™  
 	for (i = 0; i< 2; i++)
 	{
 		switch (i)
@@ -1849,16 +1850,16 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 		}
 	}
 
-	//²‚Ì€”õ@‚±‚±‚Ü‚Å  
+	//è»¸ã®æº–å‚™ã€€ã“ã“ã¾ã§  
 	////////////////////////////////// 
 
 	IplImage img;
 	IplImage gray_img;
 	IplImage* gray_img_Contour;
 
-	//—ÖŠs•Û‘¶—p‚ÌƒXƒgƒŒ[ƒW‚ğŠm•Û  
-	CvMemStorage *storage = cvCreateMemStorage(0);//—ÖŠs—p  
-	CvMemStorage *storagepoly = cvCreateMemStorage(0);//—ÖŠs‹ß—ƒ|ƒŠƒSƒ“—p  
+	//è¼ªéƒ­ä¿å­˜ç”¨ã®ã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸ã‚’ç¢ºä¿  
+	CvMemStorage *storage = cvCreateMemStorage(0);//è¼ªéƒ­ç”¨  
+	CvMemStorage *storagepoly = cvCreateMemStorage(0);//è¼ªéƒ­è¿‘ä¼¼ãƒãƒªã‚´ãƒ³ç”¨  
 
 	CvSeq *firstcontour = NULL;
 	CvSeq *polycontour = NULL;
@@ -1881,8 +1882,8 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 	//cvNamedWindow(" marker_inside", CV_WINDOW_AUTOSIZE);
 	//cvNamedWindow(" capture_image", CV_WINDOW_AUTOSIZE);
 
-	//ƒ}ƒXƒN‰æ‘œ‚Ì“Ç‚İ‚İB  
-	//ŒŸo‚µ‚½ƒ}[ƒJ[‚ÆA‚±‚Ì‰æ‘œ‚ÌAND‚ğæ‚èAcvCountNonZero‚ªˆê”Ô‘å‚«‚©‚Á‚½‚à‚Ì‚ğƒ}[ƒJ[‚ÌŒü‚«‚Æ‚·‚éB  
+	//ãƒã‚¹ã‚¯ç”»åƒã®èª­ã¿è¾¼ã¿ã€‚  
+	//æ¤œå‡ºã—ãŸãƒãƒ¼ã‚«ãƒ¼ã¨ã€ã“ã®ç”»åƒã®ANDã‚’å–ã‚Šã€cvCountNonZeroãŒä¸€ç•ªå¤§ãã‹ã£ãŸã‚‚ã®ã‚’ãƒãƒ¼ã‚«ãƒ¼ã®å‘ãã¨ã™ã‚‹ã€‚  
 
 	cv::Mat copy_frame;
 	cv::Mat gray_Mat;
@@ -1893,21 +1894,21 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 	//cv::namedWindow("test");
 	//cv::namedWindow("Capture");
 	in_frame.copyTo(copy_frame);
-	//ƒOƒŒ[ƒXƒP[ƒ‹‰»
+	//ã‚°ãƒ¬ãƒ¼ã‚¹ã‚±ãƒ¼ãƒ«åŒ–
 	cv::cvtColor(in_frame, gray_Mat, CV_BGR2GRAY);
 	img = in_frame;
 	gray_img = gray_Mat;
-	//•½ŠŠ‰»
+	//å¹³æ»‘åŒ–
 	cvSmooth(&gray_img, &gray_img, CV_GAUSSIAN, 3);
-	//“ñ’l‰»
+	//äºŒå€¤åŒ–
 	cvThreshold(&gray_img, &gray_img, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-	//”½“]  
+	//åè»¢  
 	cvNot(&gray_img, &gray_img);
-	//—ÖŠs’Šo
+	//è¼ªéƒ­æŠ½å‡º
 	int contourCount = 0;
 	cvCopy(&gray_img, gray_img_Contour);
 	contourCount = cvFindContours(gray_img_Contour, storage, &firstcontour, sizeof (CvContour), CV_RETR_CCOMP);
-	//—ÖŠs‚É‹ß—‚µ‚Ä‚¢‚éƒ|ƒŠƒSƒ“‚ğ‹‚ß‚éiÅ¬’¼ü‹——£3ƒsƒNƒZƒ‹‚Éİ’èj
+	//è¼ªéƒ­ã«è¿‘ä¼¼ã—ã¦ã„ã‚‹ãƒãƒªã‚´ãƒ³ã‚’æ±‚ã‚ã‚‹ï¼ˆæœ€å°ç›´ç·šè·é›¢3ãƒ”ã‚¯ã‚»ãƒ«ã«è¨­å®šï¼‰
 	polycontour = cvApproxPoly(firstcontour, sizeof(CvContour), storagepoly, CV_POLY_APPROX_DP, 3, 1);
 	//cout << polycontour->total << endl;
 
@@ -1929,16 +1930,16 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 						xlist[n] = (float)p->x;
 						ylist[n] = (float)p->y;
 					}
-					//lŠp‚Ìî•ñ‚ğ“n‚·B‚Ç‚¿‚ç‚ğŒü‚¢‚Ä‚¢‚é‚©‚Í‚Ü‚¾‚í‚©‚ç‚È‚¢  
+					//å››è§’ã®æƒ…å ±ã‚’æ¸¡ã™ã€‚ã©ã¡ã‚‰ã‚’å‘ã„ã¦ã„ã‚‹ã‹ã¯ã¾ã ã‚ã‹ã‚‰ãªã„  
 					cvGetPerspectiveTransform(tmp_pnt, dst_pnt, map_matrix);
-					//marker_insideiƒ}[ƒJ[‚Ì“à‘¤‚¾‚¯‚ğ’Šo‚µA³•ûŒ`‚É“§‹•ÏŠ·‚µ‚½‚à‚Ìj  
-					//‚ğAƒ}ƒXƒN‰æ‘œ‚ğw’è‚µ‚ÄˆêƒCƒ[ƒW‚ÉƒRƒs[B  
-					//ˆêƒCƒ[ƒW‚É”’‚¢“_‚ª‘½”‚ ‚ê‚ÎAƒ}ƒXƒN‰æ‘œ‚Æ“¯‚¶•ûŒü‚ğŒü‚¢‚Ä‚¢‚é‚±‚Æ‚É‚È‚éB  
+					//marker_insideï¼ˆãƒãƒ¼ã‚«ãƒ¼ã®å†…å´ã ã‘ã‚’æŠ½å‡ºã—ã€æ­£æ–¹å½¢ã«é€è¦–å¤‰æ›ã—ãŸã‚‚ã®ï¼‰  
+					//ã‚’ã€ãƒã‚¹ã‚¯ç”»åƒã‚’æŒ‡å®šã—ã¦ä¸€æ™‚ã‚¤ãƒ¡ãƒ¼ã‚¸ã«ã‚³ãƒ”ãƒ¼ã€‚  
+					//ä¸€æ™‚ã‚¤ãƒ¡ãƒ¼ã‚¸ã«ç™½ã„ç‚¹ãŒå¤šæ•°ã‚ã‚Œã°ã€ãƒã‚¹ã‚¯ç”»åƒã¨åŒã˜æ–¹å‘ã‚’å‘ã„ã¦ã„ã‚‹ã“ã¨ã«ãªã‚‹ã€‚  
 					cvWarpPerspective(&gray_img, marker_inside, map_matrix, CV_INTER_LINEAR + CV_WARP_FILL_OUTLIERS, cvScalarAll(0));
 					//cv::imshow("marker_inside", (Mat)marker_inside);
 					int notzeroCount = 0;
 					int maxCount = 0;
-					int markerDirection = 0;//Šî–{‚Í0deg  
+					int markerDirection = 0;//åŸºæœ¬ã¯0deg  
 					cvResize(marker_inside, marker_inside_zoom);
 					//cout << "width=" << tempmask->width << "height=" << tempmask->height << endl;
 					//waitKey();
@@ -1979,7 +1980,7 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 						cout << 270 << endl;
 					}
 					cvZero(tempmask);
-					//lŠp‚ÌŒü‚«‚ğ”½‰f‚³‚¹‚éB  
+					//å››è§’ã®å‘ãã‚’åæ˜ ã•ã›ã‚‹ã€‚  
 					if (markerDirection == 0) {
 						src_pnt[0].x = tmp_pnt[0].x;
 						src_pnt[0].y = tmp_pnt[0].y;
@@ -2023,17 +2024,17 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 					}
 					//cvPutText(&img,"0", cvPoint((int)src_pnt[0].x,(int)src_pnt[0].y), &dfont, CV_RGB(255, 0, 255));  
 					//cvPutText(&img,"1", cvPoint((int)src_pnt[1].x,(int)src_pnt[1].y), &dfont, CV_RGB(255, 0, 255)); 
-					//ƒ}[ƒJ[‚ÌƒCƒ[ƒWã‚Å‚ÌÀ•W‚ğİ’èB  
+					//ãƒãƒ¼ã‚«ãƒ¼ã®ã‚¤ãƒ¡ãƒ¼ã‚¸ä¸Šã§ã®åº§æ¨™ã‚’è¨­å®šã€‚  
 					cvInitMatHeader(&image_points, 4, 1, CV_32FC2, src_pnt);
-					//–îˆó‚ÌƒCƒ[ƒWã‚Å‚ÌÀ•W‚ğİ’è
-					//ƒ}[ƒJ[‚ÌŠî–{‚Æ‚È‚éÀ•W‚ğİ’è  
+					//çŸ¢å°ã®ã‚¤ãƒ¡ãƒ¼ã‚¸ä¸Šã§ã®åº§æ¨™ã‚’è¨­å®š
+					//ãƒãƒ¼ã‚«ãƒ¼ã®åŸºæœ¬ã¨ãªã‚‹åº§æ¨™ã‚’è¨­å®š  
 					cvInitMatHeader(&object_points, 4, 3, CV_32FC1, baseMarkerPoints);
-					//ƒJƒƒ‰‚Ì“à•”’è”(intrinstic‚Ædistortion)‚©‚çArotation‚Ætranslation‚ğ‹‚ß‚é   
+					//ã‚«ãƒ¡ãƒ©ã®å†…éƒ¨å®šæ•°(intrinsticã¨distortion)ã‹ã‚‰ã€rotationã¨translationã‚’æ±‚ã‚ã‚‹   
 					cvFindExtrinsicCameraParams2(&object_points, &image_points, intrinsic, distortion, rotation, translation);
-					//‹‚ß‚½‚à‚Ì‚ğg—p‚µ‚ÄAŒ»À‹óŠÔã‚ÌÀ•W‚ª‰æ–Êã‚¾‚Æ‚Ç‚ÌˆÊ’u‚É—ˆ‚é‚©‚ğŒvZ  
+					//æ±‚ã‚ãŸã‚‚ã®ã‚’ä½¿ç”¨ã—ã¦ã€ç¾å®Ÿç©ºé–“ä¸Šã®åº§æ¨™ãŒç”»é¢ä¸Šã ã¨ã©ã®ä½ç½®ã«æ¥ã‚‹ã‹ã‚’è¨ˆç®—  
 					cvProjectPoints2(srcPoints3D, rotation, translation, intrinsic, distortion, dstPoints2D);
 					cvProjectPoints2(arrow_srcPoints3D, rotation, translation, intrinsic, distortion, arrow_dstPoints2D);
-					//²‚ğ•`‰æ  
+					//è»¸ã‚’æç”»  
 					CvPoint startpoint;
 					CvPoint endpoint;
 					CvPoint arrow_startPoint;
@@ -2074,13 +2075,13 @@ void test_th()
 
 	cap.open(0);
 	if (!cap.isOpened()) {
-		cout << "ƒJƒƒ‰‚Ì‰Šú‰»‚É¸”s‚µ‚Ü‚µ‚½" << endl;
+		cout << "ã‚«ãƒ¡ãƒ©ã®åˆæœŸåŒ–ã«å¤±æ•—ã—ã¾ã—ãŸ" << endl;
 		//return -1;
 	}
 	waitKey(1000);
 
 	cap >> original_frame;
-	if (original_frame.empty()) cout << "ƒJƒƒ‰‚Ì‰Šú‰»‚É¸”s‚µ‚Ü‚µ‚½" << endl;;
+	if (original_frame.empty()) cout << "ã‚«ãƒ¡ãƒ©ã®åˆæœŸåŒ–ã«å¤±æ•—ã—ã¾ã—ãŸ" << endl;;
 	original_frame.copyTo(copy_frame);
 	cv::cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
 	gray_img = gray_Mat;
@@ -2089,12 +2090,12 @@ void test_th()
 	{
 		cap >> original_frame;
 		original_frame.copyTo(copy_frame);
-		//ƒOƒŒ[ƒXƒP[ƒ‹‰»
+		//ã‚°ãƒ¬ãƒ¼ã‚¹ã‚±ãƒ¼ãƒ«åŒ–
 		cv::cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
 		img = original_frame;
 		gray_img = gray_Mat;
 		threshold_img = cvCreateImage(cvGetSize(&gray_img), IPL_DEPTH_8U, 1);
-		//“ñ’l‰»
+		//äºŒå€¤åŒ–
 		cv::threshold(gray_Mat, threshold_Mat, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
 		adaptiveThreshold(gray_Mat, ad_threshold_Mat, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
 
@@ -2139,7 +2140,7 @@ void cut_img()
 		//cvtColor(cut_img, cut_img, CV_BGR2GRAY);
 		imwrite(cut_imgName,cut_img);
 		sprintf(filePass, "C:/dev/index_finger/%2d.bmp", img_num);
-		//cout << "w‚Ì–{”‚ğ“ü—Í" << endl;
+		//cout << "æŒ‡ã®æœ¬æ•°ã‚’å…¥åŠ›ï¼" << endl;
 		//scanf_s("%d", &num);
 		//ofs << filePass << " " << num << " " << selection.x << " " << selection.y << " " << selection.width << " " << selection.height << endl; 
 		ofs << filePass << endl; 
@@ -2207,28 +2208,28 @@ void on_mouse(int event, int x, int y, int flags, void* param)
 	}
 }
 
-// Ï•ª‰æ‘œ¶¬
+// ç©åˆ†ç”»åƒç”Ÿæˆ
 vector<Mat> calculateIntegralHOG(const Mat& image) {
-	// X, Y•ûŒü‚É”÷•ª
+	// X, Yæ–¹å‘ã«å¾®åˆ†
 	Mat xsobel, ysobel;
 	Sobel(image, xsobel, CV_32F, 1, 0);
 	Sobel(image, ysobel, CV_32F, 0, 1);
 
-	// Šp“x•Ê‚Ì‰æ‘œ‚ğ¶¬‚µ‚Ä‚¨‚­
+	// è§’åº¦åˆ¥ã®ç”»åƒã‚’ç”Ÿæˆã—ã¦ãŠã
 	vector<Mat> bins(N_BIN);
 	for (int i = 0; i < N_BIN; i++)
 		bins[i] = Mat::zeros(image.size(), CV_32F);
 
-	// X, Y”÷•ª‰æ‘œ‚ğŒù”z•ûŒü‚Æ‹­“x‚É•ÏŠ·
+	// X, Yå¾®åˆ†ç”»åƒã‚’å‹¾é…æ–¹å‘ã¨å¼·åº¦ã«å¤‰æ›
 	Mat Imag, Iang;
 	cartToPolar(xsobel, ysobel, Imag, Iang, true);
-	// Œù”z•ûŒü‚ğ[0, 180)‚É‚·‚é
+	// å‹¾é…æ–¹å‘ã‚’[0, 180)ã«ã™ã‚‹
 	add(Iang, Scalar(180), Iang, Iang < 0);
 	add(Iang, Scalar(-180), Iang, Iang >= 180);
-	// Œù”z•ûŒü‚ğ[0, 1, ..., 8]‚É‚·‚é€”õi‚Ü‚¾floatj
+	// å‹¾é…æ–¹å‘ã‚’[0, 1, ..., 8]ã«ã™ã‚‹æº–å‚™ï¼ˆã¾ã floatï¼‰
 	Iang /= THETA;
 
-	// Œù”z•ûŒü‚ğ‹­“x‚Åd‚İ‚ğ‚Â‚¯‚ÄAŠp“x•Ê‚É“Š•[‚·‚é
+	// å‹¾é…æ–¹å‘ã‚’å¼·åº¦ã§é‡ã¿ã‚’ã¤ã‘ã¦ã€è§’åº¦åˆ¥ã«æŠ•ç¥¨ã™ã‚‹
 	for (int y = 0; y < image.rows; y++) {
 		for (int x = 0; x < image.cols; x++) {
 			int ind = Iang.at<float>(y, x);
@@ -2236,18 +2237,18 @@ vector<Mat> calculateIntegralHOG(const Mat& image) {
 		}
 	}
 
-	// Šp“x•Ê‚ÉÏ•ª‰æ‘œ¶¬
+	// è§’åº¦åˆ¥ã«ç©åˆ†ç”»åƒç”Ÿæˆ
 	vector<Mat> integrals(N_BIN);
 	for (int i = 0; i < N_BIN; i++) {
-		// Ï•ª‰æ‘œ‚ğ‚Â‚­‚éAOpenCV‚ÌŠÖ”‚ª‚ ‚é
+		// ç©åˆ†ç”»åƒã‚’ã¤ãã‚‹ã€OpenCVã®é–¢æ•°ãŒã‚ã‚‹
 		integral(bins[i], integrals[i]);
 	}
 
 	return integrals;
 }
 
-// ‚ ‚é‹éŒ`—Ìˆæ‚ÌŒù”zƒqƒXƒgƒOƒ‰ƒ€‚ğ‹‚ß‚é
-// ‚±‚±‚Å‚¢‚¤‹éŒ`‚ÍHOG“Á’¥—Ê‚ÌƒZƒ‹‚ÉŠY“–
+// ã‚ã‚‹çŸ©å½¢é ˜åŸŸã®å‹¾é…ãƒ’ã‚¹ãƒˆã‚°ãƒ©ãƒ ã‚’æ±‚ã‚ã‚‹
+// ã“ã“ã§ã„ã†çŸ©å½¢ã¯HOGç‰¹å¾´é‡ã®ã‚»ãƒ«ã«è©²å½“
 void calculateHOGInCell(Mat& hogCell, Rect roi, const vector<Mat>& integrals) {
 	int x0 = roi.x, y0 = roi.y;
 	int x1 = x0 + roi.width, y1 = y0 + roi.height;
@@ -2261,10 +2262,10 @@ void calculateHOGInCell(Mat& hogCell, Rect roi, const vector<Mat>& integrals) {
 	}
 }
 
-// HOG“Á’¥—Ê‚ğŒvZ‚·‚é
-// pt: ƒuƒƒbƒN‚Ì’†S“_
+// HOGç‰¹å¾´é‡ã‚’è¨ˆç®—ã™ã‚‹
+// pt: ãƒ–ãƒ­ãƒƒã‚¯ã®ä¸­å¿ƒç‚¹
 Mat getHOG(Point pt, const vector<Mat>& integrals) {
-	// ƒuƒƒbƒN‚ª‰æ‘œ‚©‚ç‚Í‚İo‚µ‚Ä‚¢‚È‚¢‚©Šm”F
+	// ãƒ–ãƒ­ãƒƒã‚¯ãŒç”»åƒã‹ã‚‰ã¯ã¿å‡ºã—ã¦ã„ãªã„ã‹ç¢ºèª
 	if (pt.x - R < 0 ||
 		pt.y - R < 0 ||
 		pt.x + R >= integrals[0].cols ||
@@ -2273,8 +2274,8 @@ Mat getHOG(Point pt, const vector<Mat>& integrals) {
 		return Mat();
 	}
 
-	// —^“_‚ğ’†S‚Æ‚µ‚½ƒuƒƒbƒN‚ÅA
-	// ƒZƒ‹‚²‚Æ‚ÉŒù”zƒqƒXƒgƒOƒ‰ƒ€‚ğ‹‚ß‚Ä˜AŒ‹
+	// ä¸ç‚¹ã‚’ä¸­å¿ƒã¨ã—ãŸãƒ–ãƒ­ãƒƒã‚¯ã§ã€
+	// ã‚»ãƒ«ã”ã¨ã«å‹¾é…ãƒ’ã‚¹ãƒˆã‚°ãƒ©ãƒ ã‚’æ±‚ã‚ã¦é€£çµ
 	Mat hist(Size(N_BIN*BLOCK_SIZE*BLOCK_SIZE, 1), CV_32F);
 	Point tl(0, pt.y - R);
 	int c = 0;
@@ -2289,52 +2290,52 @@ Mat getHOG(Point pt, const vector<Mat>& integrals) {
 		}
 		tl.y += CELL_SIZE;
 	}
-	// L2ƒmƒ‹ƒ€‚Å³‹K‰»
+	// L2ãƒãƒ«ãƒ ã§æ­£è¦åŒ–
 	normalize(hist, hist, 1, 0, NORM_L2);
 	return hist;
 }
 
 int test_Hog() {
-	// ‰æ‘œ‚ğƒOƒŒƒCƒXƒP[ƒ‹‚Å“Ç‚İ‚Ş
+	// ç”»åƒã‚’ã‚°ãƒ¬ã‚¤ã‚¹ã‚±ãƒ¼ãƒ«ã§èª­ã¿è¾¼ã‚€
 	string fileName = "re_rawdata/01.bmp";
 	Mat originalImage = imread(fileName, CV_LOAD_IMAGE_GRAYSCALE);
 	ofstream ofs("Hog_data.csv");
 
-	// Ï•ª‰æ‘œ¶¬
+	// ç©åˆ†ç”»åƒç”Ÿæˆ
 	vector<Mat> integrals = calculateIntegralHOG(originalImage);
-	// ‚ ‚é“_(x, y)‚ÌHOG“Á’¥—Ê‚ğ‹‚ß‚é‚É‚Í
+	// ã‚ã‚‹ç‚¹(x, y)ã®HOGç‰¹å¾´é‡ã‚’æ±‚ã‚ã‚‹ã«ã¯
 	// Mat hist = getHOG(Point(x, y), integrals);
-	// ‚Æ‚·‚éBhist‚ÍSize(81, 1) CV_32F‚ÌMat
+	// ã¨ã™ã‚‹ã€‚histã¯Size(81, 1) CV_32Fã®Mat
 
 
 	/* ****************** *
-	* ˆÈ‰ºA•\¦‚Ì‚½‚ß‚Ìˆ—
+	* ä»¥ä¸‹ã€è¡¨ç¤ºã®ãŸã‚ã®å‡¦ç†
 	* ****************** */
 
-	// •\¦—p‰æ‘œ‚ğ—pˆÓi”¼•ª‚Ì‹P“x‚Éj
+	// è¡¨ç¤ºç”¨ç”»åƒã‚’ç”¨æ„ï¼ˆåŠåˆ†ã®è¼åº¦ã«ï¼‰
 	Mat image = originalImage.clone();
 	image *= 0.5;
 
-	// Šiq“_‚ÅHOGŒvZ
+	// æ ¼å­ç‚¹ã§HOGè¨ˆç®—
 	Mat meanHOGInBlock(Size(N_BIN, 1), CV_32F);
 
 	for (int y = CELL_SIZE / 2; y < image.rows; y += CELL_SIZE) {
 		for (int x = CELL_SIZE / 2; x < image.cols; x += CELL_SIZE) {
-			// (x, y)‚Å‚ÌHOG‚ğæ“¾
+			// (x, y)ã§ã®HOGã‚’å–å¾—
 			Mat hist = getHOG(Point(x, y), integrals);
-			// ƒuƒƒbƒN‚ª‰æ‘œ‚©‚ç‚Í‚İo‚Ä‚¢‚½‚ç continue
+			// ãƒ–ãƒ­ãƒƒã‚¯ãŒç”»åƒã‹ã‚‰ã¯ã¿å‡ºã¦ã„ãŸã‚‰ continue
 			if (hist.empty()) continue;
 
-			// ƒuƒƒbƒN‚²‚Æ‚ÉŒù”z•ûŒüƒqƒXƒgƒOƒ‰ƒ€¶¬
+			// ãƒ–ãƒ­ãƒƒã‚¯ã”ã¨ã«å‹¾é…æ–¹å‘ãƒ’ã‚¹ãƒˆã‚°ãƒ©ãƒ ç”Ÿæˆ
 			meanHOGInBlock = Scalar(0);
 			for (int i = 0; i < N_BIN; i++) {
 				for (int j = 0; j < BLOCK_SIZE*BLOCK_SIZE; j++) {
 					meanHOGInBlock.at<float>(0, i) += hist.at<float>(0, i + j*N_BIN);
 				}
 			}
-			// L2ƒmƒ‹ƒ€‚Å³‹K‰»i‹­‚¢•ûŒü‚ª‹­’²‚³‚ê‚éj
+			// L2ãƒãƒ«ãƒ ã§æ­£è¦åŒ–ï¼ˆå¼·ã„æ–¹å‘ãŒå¼·èª¿ã•ã‚Œã‚‹ï¼‰
 			normalize(meanHOGInBlock, meanHOGInBlock, 1, 0, CV_L2);
-			// Šp“x‚²‚Æ‚Éü‚ğ•`‰æ
+			// è§’åº¦ã”ã¨ã«ç·šã‚’æç”»
 			Point center(x, y);
 			for (int i = 0; i < N_BIN; i++) {
 				double theta = (i * THETA + 90.0) * CV_PI / 180.0;
@@ -2352,7 +2353,7 @@ int test_Hog() {
 	}
 
 
-	// •\¦
+	// è¡¨ç¤º
 	imshow("out", image);
 	waitKey(0);
 
@@ -2362,107 +2363,122 @@ int test_Hog() {
 int init_Hogdata()
 {
 	int rawdata_num = 0;
+	char fileName[100], outFileName[100];
+
 	cout << "get_Hogdata" << endl;
-	scanf_s("rawdata_num=%d", &rawdata_num);
-	ofstream ofs("Hog_data_neg.csv", std::ios::out | std::ios::app);
-	char fileName[100];
-
-	for (int i = 1; i < 100/*rawdata_num+1*/; i++){
-		// ‰æ‘œ‚ğƒOƒŒƒCƒXƒP[ƒ‹‚Å“Ç‚İ‚Ş
+	cout << "rawdata_num = " ;
+	scanf_s("%d", &rawdata_num);
+	cout << "outFileName : " ;
+	scanf_s("%s", outFileName,100);
+	ofstream ofs(outFileName, std::ios::out | std::ios::app);
+	float * result_vec;
+	int count=0;
+	for (int num = 1; num < rawdata_num+1; num++){
+		// ç”»åƒã‚’ã‚°ãƒ¬ã‚¤ã‚¹ã‚±ãƒ¼ãƒ«ã§èª­ã¿è¾¼ã‚€
 		//string fileName = "re_rawdata/01.bmp";
-		sprintf(fileName, "resize_negative/%02d.bmp", i);
+		sprintf(fileName, "resize_negative/%02d.bmp", num);
 		Mat originalImage = imread(fileName, CV_LOAD_IMAGE_GRAYSCALE);
-
-		// Ï•ª‰æ‘œ¶¬
-		vector<Mat> integrals = calculateIntegralHOG(originalImage);
-		// ‚ ‚é“_(x, y)‚ÌHOG“Á’¥—Ê‚ğ‹‚ß‚é‚É‚Í
-		// Mat hist = getHOG(Point(x, y), integrals);
-		// ‚Æ‚·‚éBhist‚ÍSize(81, 1) CV_32F‚ÌMat
-
-
-		/* ****************** *
-		* ˆÈ‰ºA•\¦‚Ì‚½‚ß‚Ìˆ—
-		* ****************** */
-
-		// •\¦—p‰æ‘œ‚ğ—pˆÓi”¼•ª‚Ì‹P“x‚Éj
-		Mat image = originalImage.clone();
-		image *= 0.5;
-
-		// Šiq“_‚ÅHOGŒvZ
-		Mat meanHOGInBlock(Size(N_BIN, 1), CV_32F);
-
-		for (int y = CELL_SIZE / 2; y < image.rows; y += CELL_SIZE) {
-			for (int x = CELL_SIZE / 2; x < image.cols; x += CELL_SIZE) {
-				// (x, y)‚Å‚ÌHOG‚ğæ“¾
-				Mat hist = getHOG(Point(x, y), integrals);
-				// ƒuƒƒbƒN‚ª‰æ‘œ‚©‚ç‚Í‚İo‚Ä‚¢‚½‚ç continue
-				if (hist.empty()) continue;
-
-				// ƒuƒƒbƒN‚²‚Æ‚ÉŒù”z•ûŒüƒqƒXƒgƒOƒ‰ƒ€¶¬
-				meanHOGInBlock = Scalar(0);
-				for (int i = 0; i < N_BIN; i++) {
-					for (int j = 0; j < BLOCK_SIZE*BLOCK_SIZE; j++) {
-						meanHOGInBlock.at<float>(0, i) += hist.at<float>(0, i + j*N_BIN);
-					}
-				}
-				// L2ƒmƒ‹ƒ€‚Å³‹K‰»i‹­‚¢•ûŒü‚ª‹­’²‚³‚ê‚éj
-				normalize(meanHOGInBlock, meanHOGInBlock, 1, 0, CV_L2);
-				// Šp“x‚²‚Æ‚Éü‚ğ•`‰æ
-				Point center(x, y);
-				for (int i = 0; i < N_BIN; i++) {
-					double theta = (i * THETA + 90.0) * CV_PI / 180.0;
-					Point rd(CELL_SIZE*0.5*cos(theta), CELL_SIZE*0.5*sin(theta));
-					Point rp = center - rd;
-					Point lp = center - -rd;
-					line(image, rp, lp, Scalar(255 * meanHOGInBlock.at<float>(0, i), 255, 255));
-				}
-				for (int row = 0; row < (int)meanHOGInBlock.rows; row++){
-					for (int col = 0; col < (int)meanHOGInBlock.cols; col++){
-						ofs << meanHOGInBlock.at<float>(row, col) << endl;
-					}
+		int HogSize = floor((originalImage.rows - CELL_SIZE) / CELL_SIZE)*floor((originalImage.cols - CELL_SIZE) / CELL_SIZE)*BLOCK_SIZE*BLOCK_SIZE*N_BIN;
+		//cout << HogSize << endl;
+		result_vec = (float *)malloc(sizeof(double)* (HogSize+1));
+		getHog_another(originalImage, result_vec);
+		for (int i = 0; i<(int)ceil((float)originalImage.rows / (float)CELL_SIZE) - (BLOCK_SIZE - 1); i++){
+			for (int j = 0; j<(int)ceil((float)originalImage.cols / (float)CELL_SIZE) - (BLOCK_SIZE - 1); j++){
+				count = 0;
+				for (count = 0; count<BLOCK_SIZE*BLOCK_SIZE*N_BIN; count++){
+					ofs << result_vec[count] << endl;
 				}
 			}
 		}
+		free(result_vec);
+		//// ç©åˆ†ç”»åƒç”Ÿæˆ
+		//vector<Mat> integrals = calculateIntegralHOG(originalImage);
+		//// ã‚ã‚‹ç‚¹(x, y)ã®HOGç‰¹å¾´é‡ã‚’æ±‚ã‚ã‚‹ã«ã¯
+		//// Mat hist = getHOG(Point(x, y), integrals);
+		//// ã¨ã™ã‚‹ã€‚histã¯Size(81, 1) CV_32Fã®Mat
 
 
-		// •\¦
-		imshow("out", image);
-		imwrite("ppt_use.bmp", image);
-		waitKey(0);
+		///* ****************** *
+		//* ä»¥ä¸‹ã€è¡¨ç¤ºã®ãŸã‚ã®å‡¦ç†
+		//* ****************** */
+
+		//// è¡¨ç¤ºç”¨ç”»åƒã‚’ç”¨æ„ï¼ˆåŠåˆ†ã®è¼åº¦ã«ï¼‰
+		//Mat image = originalImage.clone();
+		//image *= 0.5;
+
+		//// æ ¼å­ç‚¹ã§HOGè¨ˆç®—
+		//Mat meanHOGInBlock(Size(N_BIN, 1), CV_32F);
+
+		//for (int y = CELL_SIZE / 2; y < image.rows; y += CELL_SIZE) {
+		//	for (int x = CELL_SIZE / 2; x < image.cols; x += CELL_SIZE) {
+		//		// (x, y)ã§ã®HOGã‚’å–å¾—
+		//		Mat hist = getHOG(Point(x, y), integrals);
+		//		// ãƒ–ãƒ­ãƒƒã‚¯ãŒç”»åƒã‹ã‚‰ã¯ã¿å‡ºã¦ã„ãŸã‚‰ continue
+		//		if (hist.empty()) continue;
+
+		//		// ãƒ–ãƒ­ãƒƒã‚¯ã”ã¨ã«å‹¾é…æ–¹å‘ãƒ’ã‚¹ãƒˆã‚°ãƒ©ãƒ ç”Ÿæˆ
+		//		meanHOGInBlock = Scalar(0);
+		//		for (int i = 0; i < N_BIN; i++) {
+		//			for (int j = 0; j < BLOCK_SIZE*BLOCK_SIZE; j++) {
+		//				meanHOGInBlock.at<float>(0, i) += hist.at<float>(0, i + j*N_BIN);
+		//			}
+		//		}
+		//		// L2ãƒãƒ«ãƒ ã§æ­£è¦åŒ–ï¼ˆå¼·ã„æ–¹å‘ãŒå¼·èª¿ã•ã‚Œã‚‹ï¼‰
+		//		normalize(meanHOGInBlock, meanHOGInBlock, 1, 0, CV_L2);
+		//		// è§’åº¦ã”ã¨ã«ç·šã‚’æç”»
+		//		Point center(x, y);
+		//		for (int i = 0; i < N_BIN; i++) {
+		//			double theta = (i * THETA + 90.0) * CV_PI / 180.0;
+		//			Point rd(CELL_SIZE*0.5*cos(theta), CELL_SIZE*0.5*sin(theta));
+		//			Point rp = center - rd;
+		//			Point lp = center - -rd;
+		//			line(image, rp, lp, Scalar(255 * meanHOGInBlock.at<float>(0, i), 255, 255));
+		//		}
+		//		for (int row = 0; row < (int)meanHOGInBlock.rows; row++){
+		//			for (int col = 0; col < (int)meanHOGInBlock.cols; col++){
+		//				ofs << meanHOGInBlock.at<float>(row, col) << endl;
+		//			}
+		//		}
+		//	}
+		//}
+		//// è¡¨ç¤º
+		//imshow("out", image);
+		//imwrite("ppt_use.bmp", image);
+		//waitKey(0);
 	}
 	return 0;
 }
 
 void get_Hogdata(Mat input_img, float *Hogdata)
 {
-	// Ï•ª‰æ‘œ¶¬
+	// ç©åˆ†ç”»åƒç”Ÿæˆ
 	vector<Mat> integrals = calculateIntegralHOG(input_img);
-	// ‚ ‚é“_(x, y)‚ÌHOG“Á’¥—Ê‚ğ‹‚ß‚é‚É‚Í
+	// ã‚ã‚‹ç‚¹(x, y)ã®HOGç‰¹å¾´é‡ã‚’æ±‚ã‚ã‚‹ã«ã¯
 	// Mat hist = getHOG(Point(x, y), integrals);
-	// ‚Æ‚·‚éBhist‚ÍSize(81, 1) CV_32F‚ÌMat
+	// ã¨ã™ã‚‹ã€‚histã¯Size(81, 1) CV_32Fã®Mat
 
 	/* ****************** *
-	* ˆÈ‰ºA•\¦‚Ì‚½‚ß‚Ìˆ—
+	* ä»¥ä¸‹ã€è¡¨ç¤ºã®ãŸã‚ã®å‡¦ç†
 	* ****************** */
-	// •\¦—p‰æ‘œ‚ğ—pˆÓi”¼•ª‚Ì‹P“x‚Éj
+	// è¡¨ç¤ºç”¨ç”»åƒã‚’ç”¨æ„ï¼ˆåŠåˆ†ã®è¼åº¦ã«ï¼‰
 	Mat image = input_img.clone();
 	image *= 0.5;
-	// Šiq“_‚ÅHOGŒvZ
+	// æ ¼å­ç‚¹ã§HOGè¨ˆç®—
 	Mat meanHOGInBlock(Size(N_BIN, 1), CV_32F);
 	for (int y = CELL_SIZE / 2; y < image.rows; y += CELL_SIZE) {
 		for (int x = CELL_SIZE / 2; x < image.cols; x += CELL_SIZE) {
-			// (x, y)‚Å‚ÌHOG‚ğæ“¾
+			// (x, y)ã§ã®HOGã‚’å–å¾—
 			Mat hist = getHOG(Point(x, y), integrals);
-			// ƒuƒƒbƒN‚ª‰æ‘œ‚©‚ç‚Í‚İo‚Ä‚¢‚½‚ç continue
+			// ãƒ–ãƒ­ãƒƒã‚¯ãŒç”»åƒã‹ã‚‰ã¯ã¿å‡ºã¦ã„ãŸã‚‰ continue
 			if (hist.empty()) continue;
-			// ƒuƒƒbƒN‚²‚Æ‚ÉŒù”z•ûŒüƒqƒXƒgƒOƒ‰ƒ€¶¬
+			// ãƒ–ãƒ­ãƒƒã‚¯ã”ã¨ã«å‹¾é…æ–¹å‘ãƒ’ã‚¹ãƒˆã‚°ãƒ©ãƒ ç”Ÿæˆ
 			meanHOGInBlock = Scalar(0);
 			for (int i = 0; i < N_BIN; i++) {
 				for (int j = 0; j < BLOCK_SIZE*BLOCK_SIZE; j++) {
 					meanHOGInBlock.at<float>(0, i) += hist.at<float>(0, i + j*N_BIN);
 				}
 			}
-			// L2ƒmƒ‹ƒ€‚Å³‹K‰»i‹­‚¢•ûŒü‚ª‹­’²‚³‚ê‚éj
+			// L2ãƒãƒ«ãƒ ã§æ­£è¦åŒ–ï¼ˆå¼·ã„æ–¹å‘ãŒå¼·èª¿ã•ã‚Œã‚‹ï¼‰
 			int num=0;
 			normalize(meanHOGInBlock, meanHOGInBlock, 1, 0, CV_L2);
 			for (int row = 0; row < (int)meanHOGInBlock.rows; row++){
@@ -2478,8 +2494,8 @@ void get_Hogdata(Mat input_img, float *Hogdata)
 void get_Boost()
 {
 	float training_Hogdata[Hog_data_num][Hog_num];
-	float training_labels[Hog_data_num] = {0};
-	ifstream ifs("Hog_data.csv");
+	float training_labels[Hog_data_num] = {-1};
+	ifstream ifs("Hogdata_ano2.csv");
 	if (!ifs) {
 		cout << "Error:Input data file not found" << endl;
 	}
@@ -2488,7 +2504,7 @@ void get_Boost()
 	char true_imgName[100], false_imgName[100];
 	CvBoost boost;
 
-	//Hogdata‚Ì€”õ
+	//Hogdataã®æº–å‚™
 	for (int i = 0;i < Hog_data_num; i++){
 		for (int j = 0;j< Hog_num; j++){
 			getline(ifs, tmp);
@@ -2498,40 +2514,42 @@ void get_Boost()
 			ss.clear(stringstream::goodbit);
 		}
 	}
-	for (int i = 0; i <  99; i++){
+	cout << "data load end" << endl;
+	for (int i = 0; i <  100; i++){
 		training_labels[i] = 1;
 	}
-	Mat Hogdata_Mat(198, 4410, CV_32FC1, training_Hogdata);
+	Mat Hogdata_Mat(Hog_data_num, Hog_num, CV_32FC1, training_Hogdata);
 	Mat training_labels_Mat(1,Hog_data_num,CV_32FC1, training_labels);
 	cout << "Boost training start" << endl;
 	boost.train(Hogdata_Mat, CV_ROW_SAMPLE, training_labels_Mat);
 	cout << "Boost training end" << endl; 
-	sprintf(true_imgName, "resize_positive/%02d.bmp", 25);
+	waitKey();
+	sprintf(true_imgName, "resize_positive/%02d.bmp", 16);
 	cout << true_imgName << endl;
 	Mat true_img = imread(true_imgName, -1);
-	float true_Hogdata[4410];
-	get_Hogdata(true_img,true_Hogdata);
-
+	float true_Hogdata[Hog_num];
+	//get_Hogdata(true_img,true_Hogdata);
+	getHog_another(true_img, true_Hogdata);
 	sprintf(false_imgName, "resize_negative/dog.bmp");
 	cout << false_imgName << endl;
 	Mat false_img = imread(false_imgName, -1);
-	float false_Hogdata[4410];
-	get_Hogdata(false_img, false_Hogdata);
+	float false_Hogdata[Hog_num];
+	//getHog_another(false_img, false_Hogdata);
+	getHog_another(false_img, false_Hogdata);
 
-
-	Mat true_Hogdata_Mat(1, 4410, CV_32FC1, true_Hogdata);
-	Mat false_Hogdata_Mat(1, 4410, CV_32FC1, false_Hogdata);
+	Mat true_Hogdata_Mat(1, Hog_num, CV_32FC1, true_Hogdata);
+	Mat false_Hogdata_Mat(1, Hog_num, CV_32FC1, false_Hogdata);
 
 	float response1 = boost.predict(true_Hogdata_Mat);
 	if (response1 == 1.0f) {
-		cout << "true" << endl;
+		cout << response1 << endl;
 	}
 	else {
 		cout << "false" << endl;
 	}
 	float response2 = boost.predict(false_Hogdata_Mat);
 	if (response2 == 1.0f) {
-		cout << "true" << endl;
+		cout << response2 << endl;
 	}
 	else {
 		cout << "false" << endl;
@@ -2540,3 +2558,99 @@ void get_Boost()
 	//waitKey(0);
 }
 
+int minimum(int a, int b)
+{
+	if (a<b){
+		return a;
+	}
+	return b;
+}
+
+void getHog_another(Mat inImg,float* vec_tmp){
+	int x, y, i, j, k, m, n, count;// cell_size = 12, rot_res = 9, block_size = 3;
+	float dx, dy, ***hist, norm; //*vec_tmp,
+    IplImage im;
+    CvMat *mag = NULL, *theta = NULL;
+	/*ofstream ofs(outFileName, std::ios::out | std::ios::app);
+	if ((im = cvLoadImage(fileName, CV_LOAD_IMAGE_GRAYSCALE)) == 0){
+		fprintf(stderr, "No such file %s", fileName);
+		exit(0);
+	}*/
+	// magnitude and direction
+	im = (IplImage )inImg;
+	mag = cvCreateMat(im.height, im.width, CV_32F);
+	theta = cvCreateMat(im.height, im.width, CV_32F);
+	for (y = 0; y<im.height; y++){
+	    for (x = 0; x<im.width; x++){
+	        if (x == 0 || x == im.width - 1 || y == 0 || y == im.height - 1){
+	            cvmSet(mag, y, x, 0.0);
+	            cvmSet(theta, y, x, 0.0);
+			}
+	        else{
+	            dx = double((uchar)im.imageData[y*im.widthStep + x + 1]) - double((uchar)im.imageData[y*im.widthStep + x - 1]);
+				dy = double((uchar)im.imageData[(y + 1)*im.widthStep + x]) - double((uchar)im.imageData[(y - 1)*im.widthStep + x]);
+				cvmSet(mag, y, x, sqrt(dx*dx + dy*dy));
+				cvmSet(theta, y, x, atan(dy / (dx + 0.01)));
+			}
+		}
+	}
+	// histogram generation for each cell
+	hist = (float***)malloc(sizeof(float**)* (int)ceil((float)im.height / (float)CELL_SIZE));
+	if (hist == NULL) exit(1);
+	for (i = 0; i<(int)ceil((float)im.height / (float)CELL_SIZE); i++){
+		hist[i] = (float**)malloc(sizeof(float*)*(int)ceil((float)im .width / (float)CELL_SIZE));
+		if (hist[i] == NULL) exit(1);
+		for (j = 0; j<(int)ceil((float)im.width / (float)CELL_SIZE); j++){
+			hist[i][j] = (float *)malloc(sizeof(float)*N_BIN);
+			if (hist[i][j] == NULL) exit(1);
+		}
+	}
+	for (i = 0; i<(int)ceil((float)im.height / (float)CELL_SIZE); i++){
+		for (j = 0; j<(int)ceil((float)im.width / (float)CELL_SIZE); j++){
+			for (k = 0; k < N_BIN; k++){
+				hist[i][j][k] = 0.0;
+			}
+		}
+	}
+	for (i = 0; i<(int)ceil((float)im.height / (float)CELL_SIZE); i++){
+		for (j = 0; j<(int)ceil((float)im.width / (float)CELL_SIZE); j++){
+			for (m = i*CELL_SIZE; m<minimum((i + 1)*CELL_SIZE, im.height); m ++){
+				for (n = j*CELL_SIZE; n<minimum((j + 1)*CELL_SIZE, im.width); n++){
+					hist[i][j][(int)floor((cvmGet(theta, m, n) + CV_PI / 2)*N_BIN / CV_PI)] += cvmGet(mag, m, n);
+				}
+			}
+		}
+	}
+	//normalization for each block & generate vector 
+	//vec_tmp = (float *)malloc(sizeof(float)*BLOCK_SIZE*BLOCK_SIZE*N_BIN);
+	for (i = 0; i<(int)ceil((float)im.height / (float)CELL_SIZE) - (BLOCK_SIZE - 1); i++){
+		for (j = 0; j<(int)ceil((float)im.width / (float)CELL_SIZE) - (BLOCK_SIZE - 1); j++){
+			count = 0;
+			norm = 0.0;
+			for (m = i; m<i + BLOCK_SIZE; m++){
+				for (n = j; n<j + BLOCK_SIZE; n++){
+					for (k = 0; k<N_BIN; k++){
+						vec_tmp[count++] = hist[m][n][k];
+						norm += hist[m][n][k] * hist[m][n][k];
+					}
+				}
+			}
+			for (count = 0; count<BLOCK_SIZE*BLOCK_SIZE*N_BIN; count++){
+				vec_tmp[count] = vec_tmp[count] / (sqrt(norm + 1));
+				if (vec_tmp[count]>0.2) vec_tmp[count] = 0.2;
+				//printf("%.4f ", vec_tmp[count]);
+				//ofs << vec_tmp[count] << endl;
+			}
+		}
+	}
+	for (i = 0; i<(int)ceil((float)im.height / (float)CELL_SIZE); i ++) {
+		for (j = 0; j <(int)ceil((float)im.width / (float)CELL_SIZE); j ++) {
+			free(hist[i][j]);
+		}
+		free(hist[i]);
+	}
+	free(hist);
+	//free(vec_tmp);
+	cvReleaseMat(&mag);
+	cvReleaseMat(&theta);
+}
