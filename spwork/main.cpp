@@ -159,13 +159,12 @@ int main()
 	//cut_img();
 	//resize_img();
 	//test_Hog();
-	//init_Hogdata();
-	get_Boost();
+	init_Hogdata();
+	//get_Boost();
 
 	//ARÇÃèâä˙ê›íË
 	CvFileStorage *fs;
 	CvFileNode *param;
-
 	fs = cvOpenFileStorage("camera.xml", 0, CV_STORAGE_READ);
 	param = cvGetFileNodeByName(fs, NULL, "intrinsic");
 	intrinsic = (CvMat *)cvRead(fs, param);
@@ -2428,6 +2427,7 @@ int init_Hogdata()
 
 		// ï\é¶
 		imshow("out", image);
+		imwrite("ppt_use.bmp", image);
 		waitKey(0);
 	}
 	return 0;
