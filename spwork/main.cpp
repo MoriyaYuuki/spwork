@@ -148,6 +148,9 @@ int select_object;
 //pos+neg data_num
 #define Hog_data_num 198
 
+//拡大倍率
+#define Resize_Rate 4
+
 
 int main()
 {
@@ -161,7 +164,25 @@ int main()
 	//resize_img();
 	//test_Hog();
 	//init_Hogdata();
-	get_Boost();
+	//get_Boost();
+
+
+	Data mouse_Data;
+	cutData cut;
+	CvMat object_points;
+	CvMat image_points;
+	CvMat point_counts;
+	char *translate_Text_View = " ";
+	char total_Text_View[50] = " ";
+	char str[100];
+	Point  *Notice_coordinates;//特定単語座標
+	Point  *preNotice_coordinates;//１つ前の特定単語座標
+	Notice_coordinates = new Point;
+	preNotice_coordinates = new Point;
+	int stopCount = 0;
+	int loopCount = 0;
+	int ch;
+	
 
 	//ARの初期設定
 	CvFileStorage *fs;
@@ -173,27 +194,37 @@ int main()
 	distortion = (CvMat *)cvRead(fs, param);
 	cvReleaseFileStorage(&fs);
 
-	CvMat object_points;
-	CvMat image_points;
-	CvMat point_counts;
+	//カメラの初期設定(画像サイズの設定)
 	cv::VideoCapture cap;
 	cv::Size cap_size(640, 480);
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, cap_size.width);
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, cap_size.height);
 
-	Data mouse_Data;
-	cutData cut;
-	char *translate_Text_View = " ";
-	char total_Text_View[50] = " ";
-	makeDirectory("50result_img");
-	ofstream ofs("result_word.txt");
-	Point  *Notice_coordinates;
-	Notice_coordinates = new Point;
-	Point  *preNotice_coordinates;
-	preNotice_coordinates = new Point;
-	int stopCount = 0;
-	int ch;
-	char str[100];
+	// 動画保存設定
+	int fps = 8;
+	//cvGetCaptureProperty((CvCapture *)cap, CV_CAP_PROP_FPS);
+
+	//保存先の入力
+	//ディレクトリ
+	char saveDirectoryName[100];
+	char saveInDirectoryName[100];
+	cout << "Save_Directory_Name : " ;
+	scanf_s("%s", saveDirectoryName,100);
+	//結果.txt
+	char saveResultWordName[100];
+	cout << "Save_resultWord_Name(.txt) : " ;
+	scanf_s("%s", saveResultWordName, 100);
+	ofstream ofs(saveResultWordName);
+	//動画の名前.avi
+	char saveCaptureName[100];
+	cout << "Save_Capture_Name(.avi) : ";
+	scanf_s("%s", saveCaptureName, 100);
+	VideoWriter writer(saveCaptureName, CV_FOURCC('X', 'V', 'I', 'D'), fps, cap_size);
+	//保存画像の名前
+	char saveImageName[100];
+	cout << "Save_Image_Name : ";
+	scanf_s("%s", saveImageName, 100);
+	
 	// 最初に見つかったカメラを開く
 	cap.open(0);
 	if (!cap.isOpened()) {
@@ -201,48 +232,45 @@ int main()
 		return -1;
 	}
 
-	// 動画保存設定
-	int fps = 8;
-	//cvGetCaptureProperty((CvCapture *)cap, CV_CAP_PROP_FPS);
-
-	cv::VideoWriter writer("capture1.avi", CV_FOURCC('X', 'V', 'I', 'D'), fps, cap_size);
-
 	//色追跡の設定
 	meanShift_init();
 
 	//日本語表示の設定
 	cvPutTextJP putTextJP;
-	Point2i pos;
+	Point2i pos; //結果の表字座標
 	pos.x = 0;
 	pos.y = 0;
-
 	putTextJP.setLocate(pos);
-	cvWaitKey(10);
+
+	cout << "動作開始" << endl;
+	cvWaitKey();
+
 	cv::namedWindow("Capture");
-	int loopcount = 0;
-	while (loopcount<50) {
+	while (1) {
 		// 画像を取得
-		cv::Mat original_frame, copy_frame;
-		cv::Mat gray_Mat;
+		Mat original_frame, copy_frame;
+		Mat gray_Mat;
 		cap >> original_frame;
 		if (original_frame.empty()) break;
 		original_frame.copyTo(copy_frame);
 		//色追跡
-		//meanShift(copy_frame,Notice_coordinates);
+		meanShift(copy_frame,Notice_coordinates);
 		//ARマーカー追跡
-		ARtracking(copy_frame, Notice_coordinates);
+		//ARtracking(copy_frame, Notice_coordinates);
 		if (abs(Notice_coordinates->x - preNotice_coordinates->x) < 5  && abs(Notice_coordinates->y - preNotice_coordinates->y) <5){
 			stopCount++;
 		}
 		/*cout << "stopCount = " <<stopCount << endl;
 		cout << "座標x" << Notice_coordinates->x << "座標y" << Notice_coordinates->y << endl;*/
 		if (stopCount ==100 ){
+			sprintf(saveInDirectoryName, "%02d", loopCount+1);
+			makeDirectory(saveInDirectoryName);
 			//グレースケール化
-			cv::cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
-			cv::imwrite("original.png", original_frame);
-			cv::imwrite("gray.png", gray_Mat);
+			cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
+			imwrite("original.png", original_frame);
+			imwrite("gray.png", gray_Mat);
 			IplImage gray_img = gray_Mat;
-			//表示
+			//表示(デバック用)
 			/*cvNamedWindow("Copy");
 			cvShowImage("Copy", &gray_img);*/
 			////マウスから座標入力
@@ -260,19 +288,19 @@ int main()
 			CvMat *rotationMat = cvCreateMat(2, 3, CV_32FC1);
 			cv2DRotationMatrix(cvPoint2D32f(Notice_coordinates->x, Notice_coordinates->y), slopeValue, 1, rotationMat);
 			cvWarpAffine(&gray_img, afterRotation_img, rotationMat, CV_INTER_LINEAR + CV_WARP_FILL_OUTLIERS, cvScalarAll(255));
-			cv::imwrite("rotaion.png", (Mat)afterRotation_img);
+			imwrite("rotaion.png", (Mat)afterRotation_img);
 			/*大まかな切り出し処理*/
 			cvSetImageROI(afterRotation_img, cvRect(Notice_coordinates->x - rough_cut_area_width / 2, Notice_coordinates->y - rough_cut_area_hight / 2, rough_cut_area_width, rough_cut_area_hight));
 			IplImage *rough_cut_img = cvCreateImage(cvGetSize(afterRotation_img), IPL_DEPTH_8U, 1);
 			cvCopy(afterRotation_img, rough_cut_img);
 			cvResetImageROI(afterRotation_img);
-			cv::imwrite("rough_cut.png", (Mat)rough_cut_img);
+			imwrite("rough_cut.png", (Mat)rough_cut_img);
 			//cvWaitKey(0);
 			//二値化
 			IplImage *threshold_img = cvCreateImage(cvGetSize(rough_cut_img), IPL_DEPTH_8U, 1);
 			//threshold(rough_cut_img, threshold_img);
 			adaptiveThreshold((Mat)rough_cut_img, (Mat)threshold_img, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
-			cv::imwrite("threshold.png", (Mat)threshold_img);
+			imwrite("threshold.png", (Mat)threshold_img);
 			//cvNamedWindow("rough_th");
 			//cvShowImage("rough_th", threshold_img);
 			//waitKey();
@@ -283,36 +311,38 @@ int main()
 			cutOut_img = cvCreateImage(cvGetSize(threshold_img), IPL_DEPTH_8U, 1);
 			cvCopy(threshold_img, cutOut_img);
 			cvResetImageROI(threshold_img);
-			cv::imwrite("cutOut.png", (Mat)cutOut_img);
+			imwrite("cutOut.png", (Mat)cutOut_img);
 			//cvNamedWindow("cutOut_img");
 			//cvShowImage("cutOut_img", cutOut_img);
 			//waitKey();
 			//画像補間+鮮鋭化
-			IplImage *cutOut_resize_img1 = cvCreateImage(cvSize(cutOut_img->width * 4, cutOut_img->height * 4), IPL_DEPTH_8U, 1);
-			cv::resize((Mat)cutOut_img, (Mat)cutOut_resize_img1, cvSize(cutOut_img->width * 4, cutOut_img->height * 4), INTER_NEAREST);
-
-			IplImage * g_resize_img1_2 = cvCreateImage(cvSize(cutOut_resize_img1->width, cutOut_resize_img1->height), IPL_DEPTH_8U, 1);//縦横4倍;
-			cv::GaussianBlur((Mat)cutOut_resize_img1, (Mat)g_resize_img1_2, cv::Size(11, 11), 6, 6);
-			IplImage *sub_test_img2 = cvCreateImage(cvSize(cutOut_resize_img1->width, cutOut_resize_img1->height ), IPL_DEPTH_8U, 1);
-			IplImage *unsharp_test_img2 = cvCreateImage(cvSize(cutOut_resize_img1->width, cutOut_resize_img1->height), IPL_DEPTH_8U, 1);
-			(Mat)sub_test_img2 = (Mat)cutOut_resize_img1 - (Mat)g_resize_img1_2;
-			(Mat)unsharp_test_img2 = (Mat)cutOut_resize_img1 + ((Mat)sub_test_img2 * 60);
+			//4倍に拡大
+			IplImage *cutOutResize_img = cvCreateImage(cvSize(cutOut_img->width * Resize_Rate, cutOut_img->height * Resize_Rate), IPL_DEPTH_8U, 1);
+			resize((Mat)cutOut_img, (Mat)cutOutResize_img, cvSize(cutOut_img->width * Resize_Rate, cutOut_img->height * Resize_Rate), INTER_NEAREST);
+			//鮮鋭化
+			IplImage * cutOutResizeGFilter_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);//縦横4倍;
+			GaussianBlur((Mat)cutOutResize_img, (Mat)cutOutResizeGFilter_img, cv::Size(11, 11), 6, 6);
+			IplImage *subTmp_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height ), IPL_DEPTH_8U, 1);
+			IplImage *cutOutResizeUnsharp_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);
+			(Mat)subTmp_img = (Mat)cutOutResize_img - (Mat)cutOutResizeGFilter_img;
+			(Mat)cutOutResizeUnsharp_img = (Mat)cutOutResize_img + ((Mat)subTmp_img * 60);
 
 			//文字認識
-			char* result_Text = ocr(cutOut_img);
-			char* result_Text1 = ocr(unsharp_test_img2);
-
+			//char* result_Text = ocr(cutOut_img);
+			char* result_Text = ocr(cutOutResizeUnsharp_img);
+			//char* result_Text1 = ocr(unsharp_test_img2);
 			//cout << "Normal : " << result_Text << "Nearest : " << result_Text1 << /*"Linear : " <<*/ /*result_Text2 <<
 			//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 <<*/ endl;
 			//ofs << "Normal : " << result_Text << "Nearest : " << result_Text1 << /*"Linear : " << *//*result_Text2 <<
 			//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 << */endl;
-			sprintf(str, "%2d.bmp", loopcount);
-			cvSaveImage(str, unsharp_test_img2);
+			//sprintf(str, "%2d.bmp", loopCount+1);
+			//cvSaveImage(str, unsharp_test_img2);
 			
 			//翻訳
 			char translate_Text[100] = { " " };
-			Bing_Translator(result_Text1, translate_Text);
+			Bing_Translator(result_Text, translate_Text);
 			//cout << translate_Text << endl;
+			//標示用型変換
 			int nSize = 0;
 			ConvUtf8toSJis((BYTE*)(translate_Text), NULL, &nSize);
 			BYTE* translate_Text_sjis = new BYTE[nSize + 1];
@@ -320,13 +350,15 @@ int main()
 			ConvUtf8toSJis((BYTE*)(translate_Text), translate_Text_sjis, &nSize);
 			translate_Text_View = (char *)translate_Text_sjis;
 			cout << translate_Text_View << endl;
-			strtok(result_Text1, "\n\0");
+			strtok(result_Text, "\n\0");
 			strtok(translate_Text_View, "\n\0");
-			sprintf_s(total_Text_View,50,"%s : %s",result_Text1,translate_Text_View);
+			sprintf_s(total_Text_View,50,"%s : %s",result_Text,translate_Text_View);
 			//waitKey();
-			ofs << "tesseract : " << result_Text1 << " , " << "Bing Translator : " << translate_Text << endl;
+
+			ofs << "tesseract : " << result_Text << " , " << "Bing Translator : " << translate_Text << endl;
 			stopCount = 0;
-			loopcount++;
+			loopCount++;
+			_chdir("spwork");
 		}
 		//表示
 		//cout << translate_Text_view << endl;
@@ -989,6 +1021,7 @@ void meanShift_init(){
 		int val = cv::saturate_cast<int>(meanshift_hist.at<float>(i)*histimg.rows / 255);
 		cv::rectangle(histimg, cv::Point(i*binW, histimg.rows), cv::Point((i + 1)*binW, histimg.rows - val), cv::Scalar(buf.at<cv::Vec3b>(i)), -1, 8);
 	}
+	cout << "追跡色ヒストグラム" << endl;
 	cv::imshow("Histogram", histimg);
 	cv::waitKey(0);
 }
@@ -2530,7 +2563,7 @@ void get_Boost()
 	float true_Hogdata[Hog_num];
 	//get_Hogdata(true_img,true_Hogdata);
 	getHog_another(true_img, true_Hogdata);
-	sprintf(false_imgName, "resize_negative/dog.bmp");
+	sprintf(false_imgName, "resize_negative/01.bmp");
 	cout << false_imgName << endl;
 	Mat false_img = imread(false_imgName, -1);
 	float false_Hogdata[Hog_num];
@@ -2542,17 +2575,17 @@ void get_Boost()
 
 	float response1 = boost.predict(true_Hogdata_Mat);
 	if (response1 == 1.0f) {
-		cout << response1 << endl;
+		cout <<"true : " <<response1 << endl;
 	}
 	else {
-		cout << "false" << endl;
+		cout << "false : "<<response1 << endl;
 	}
 	float response2 = boost.predict(false_Hogdata_Mat);
 	if (response2 == 1.0f) {
-		cout << response2 << endl;
+		cout << "true : "<<response2 << endl;
 	}
 	else {
-		cout << "false" << endl;
+		cout << "false : " <<response1<< endl;
 	}
 
 	//waitKey(0);
