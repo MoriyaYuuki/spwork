@@ -210,6 +210,7 @@ int main()
 	char saveInDirectoryName[100];
 	cout << "Save_Directory_Name : " ;
 	scanf_s("%s", saveDirectoryName,100);
+	makeDirectory(saveDirectoryName);
 	//結果.txt
 	char saveResultWordName[100];
 	cout << "Save_resultWord_Name(.txt) : " ;
@@ -226,7 +227,7 @@ int main()
 	scanf_s("%s", saveImageName, 100);
 	
 	// 最初に見つかったカメラを開く
-	cap.open(0);
+	cap.open(1);
 	if (!cap.isOpened()) {
 		cout << "カメラの初期化に失敗しました" << endl;
 		return -1;
@@ -354,7 +355,6 @@ int main()
 			strtok(translate_Text_View, "\n\0");
 			sprintf_s(total_Text_View,50,"%s : %s",result_Text,translate_Text_View);
 			//waitKey();
-
 			ofs << "tesseract : " << result_Text << " , " << "Bing Translator : " << translate_Text << endl;
 			stopCount = 0;
 			loopCount++;
