@@ -250,7 +250,7 @@ int main()
 
 	cout << "動作開始" << endl;
 	cout << "target_word : ";
-	targetWord=randomWordOut(wordNum);
+	targetWord = randomWordOut(wordNum);
 	cv::namedWindow("Capture");
 	int whileCount = 0;
 	while (1) {
@@ -310,8 +310,8 @@ int main()
 			//cvWaitKey(0);
 			//二値化
 			IplImage *threshold_img = cvCreateImage(cvGetSize(rough_cut_img), IPL_DEPTH_8U, 1);
-			//threshold(rough_cut_img, threshold_img);
-			adaptiveThreshold((Mat)rough_cut_img, (Mat)threshold_img, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
+			threshold(rough_cut_img, threshold_img);
+			//adaptiveThreshold((Mat)rough_cut_img, (Mat)threshold_img, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
 			imwrite("threshold.png", (Mat)threshold_img);
 			//cvNamedWindow("rough_th");
 			//cvShowImage("rough_th", threshold_img);
@@ -340,8 +340,8 @@ int main()
 			(Mat)cutOutResizeUnsharp_img = (Mat)cutOutResize_img + ((Mat)subTmp_img * 60);
 			imwrite("cutOutResizeUnsharp.png", (Mat)cutOutResizeUnsharp_img);
 			//文字認識
-			//char* result_Text = ocr(cutOut_img);
-			char* result_Text = ocr(cutOutResizeUnsharp_img);
+			char* result_Text = ocr(cutOut_img);
+			char* result_TextUnsharp = ocr(cutOutResizeUnsharp_img);
 			//char* result_Text1 = ocr(unsharp_test_img2);
 			//cout << "Normal : " << result_Text << "Nearest : " << result_Text1 << /*"Linear : " <<*/ /*result_Text2 <<
 			//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 <<*/ endl;
@@ -352,7 +352,9 @@ int main()
 
 			//翻訳
 			char translate_Text[100] = { " " };
+			char translate_TextUnsharp[100] = { " " };
 			Bing_Translator(result_Text, translate_Text);
+			Bing_Translator(result_TextUnsharp, translate_TextUnsharp);
 			//cout << translate_Text << endl;
 			//標示用型変換
 			int nSize = 0;
@@ -366,7 +368,8 @@ int main()
 			strtok(translate_Text_View, "\n\0");
 			sprintf_s(total_Text_View, 50, "%s : %s", result_Text, translate_Text_View);
 			//waitKey();
-			ofs <<"targetWord:" << targetWord <<","<<"tesseract:" << result_Text << "," << "Bing Translator:" << translate_Text << endl;
+			ofs << "targetWord:" << targetWord << "," << "tesseract:" << result_Text << "," << "Bing Translator:" << translate_Text << endl;
+			ofs << "targetWord:" << targetWord << "," << "tesseractUnsharp:" << result_TextUnsharp << "," << "Bing TranslatorUnsharp:" << translate_TextUnsharp << endl;
 			cout << "Next_target_word : ";
 			targetWord = randomWordOut(wordNum);
 			sprintf(saveInDirectoryName, "../%02d", loopCount + 1);
@@ -392,7 +395,7 @@ int main()
 			cv::imwrite("cap.png", original_frame);
 			break;
 		}
-		cout << whileCount << endl;
+		//cout << whileCount << endl;
 	}
 	cvDestroyWindow("Capture");
 	cap.release();
@@ -1084,7 +1087,7 @@ void meanShift(Mat in_frame, Point *Notice_coordinates){
 	}
 	before_center = trackBox.center;
 	// 表示
-	ellipse(in_frame, trackBox, cv::Scalar(0, 0, 255), 3, 16); // cv::LINE_AA=16
+	//ellipse(in_frame, trackBox, cv::Scalar(0, 0, 255), 3, 16); // cv::LINE_AA=16
 	//矢印の終点計算
 	Point end;
 	Notice_coordinates->x = trackBox.center.x + ((100 + trackBox.size.height / 2) * cos(trackBox.angle*(M_PI / 180) + (M_PI) / 2));
@@ -2706,10 +2709,10 @@ void getHog_another(Mat inImg, float* vec_tmp){
 int startCheckMeanShift(Mat inImg)
 {
 	int colorCount = 0;
-	cv::Mat hsv;
-	cv::cvtColor(inImg, hsv, cv::COLOR_BGR2HSV);
+	Mat hsv;
+	cvtColor(inImg, hsv, cv::COLOR_BGR2HSV);
 	int ch[] = { 0, 0 };
-	cv::Mat hue(hsv.size(), hsv.depth());
+	Mat hue(hsv.size(), hsv.depth());
 	mixChannels(&hsv, 1, &hue, 1, ch, 1);
 	for (int i = 0; i < hue.rows; i++){
 		for (int j = 0; j < hue.cols; j++){
@@ -2722,7 +2725,7 @@ int startCheckMeanShift(Mat inImg)
 		}
 	}
 	//getchar();
-	cout << colorCount << endl;
+	//cout << colorCount << endl;
 	if (colorCount < 25000){
 		return -1;
 	}
