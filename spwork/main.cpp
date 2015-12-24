@@ -1,5 +1,4 @@
-﻿
-#define _CRT_SECURE_NO_WARNINGS 
+﻿#define _CRT_SECURE_NO_WARNINGS 
 #define _USE_MATH_DEFINES
 
 #include <opencv2/opencv.hpp>
@@ -86,7 +85,7 @@ int cutout(IplImage* threshold_img, cutData *cut);
 char *ocr(IplImage* result_img);
 void meanShift_init();
 void meanShift(Mat in_frame, Point *Notice_coordinates);
-void Bing_Translator(char * in_Text ,char *out_Text);
+void Bing_Translator(char * in_Text, char *out_Text);
 BOOL ConvUtf8toSJis(BYTE* pSource, BYTE* pDist, int* pSize);
 void check_OCR();
 void testAR();
@@ -105,6 +104,10 @@ void get_Hogdata(Mat input_img, float *Hogdata[]);
 void resize_img();
 void get_Boost();
 void getHog_another(Mat inImg, float* vec_tmp);
+int startCheckMeanShift(Mat inImg);
+int readWordList(char* wordListName);
+String randomWordOut(int maxWordNum);
+inline void InitRand();
 
 /*時間の取得*/
 time_t now = time(NULL);
@@ -150,6 +153,8 @@ int select_object;
 //拡大倍率
 #define Resize_Rate 4
 
+string wordlist[100];
+
 int main()
 {
 	//動作確認用関数
@@ -164,6 +169,9 @@ int main()
 	//init_Hogdata();
 	//get_Boost();
 	//CAM("test");
+	int wordNum = readWordList("wordList.txt");
+	InitRand();
+	String targetWord;
 
 	Data mouse_Data;
 	cutData cut;
@@ -180,7 +188,7 @@ int main()
 	int stopCount = 0;
 	int loopCount = 0;
 	int ch;
-	
+
 	//ARの初期設定
 	//CvFileStorage *fs;
 	//CvFileNode *param;
@@ -191,12 +199,18 @@ int main()
 	//distortion = (CvMat *)cvRead(fs, param);
 	//cvReleaseFileStorage(&fs);
 
-
 	//カメラの初期設定(画像サイズの設定)
 	cv::VideoCapture cap;
 	cv::Size cap_size(640, 480);
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, cap_size.width);
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, cap_size.height);
+
+	//最初に見つかったカメラを開く
+	cap.open(1);
+	if (!cap.isOpened()) {
+		cout << "カメラの初期化に失敗しました" << endl;
+		return -1;
+	}
 
 	// 動画保存設定
 	int fps = 8;
@@ -206,12 +220,12 @@ int main()
 	//ディレクトリ
 	char saveDirectoryName[100];
 	char saveInDirectoryName[100];
-	cout << "Save_Directory_Name : " ;
-	scanf_s("%s", saveDirectoryName,100);
+	cout << "Save_Directory_Name : ";
+	scanf_s("%s", saveDirectoryName, 100);
 	makeDirectory(saveDirectoryName);
 	//結果.txt
 	char saveResultWordName[100];
-	cout << "Save_resultWord_Name(.txt) : " ;
+	cout << "Save_resultWord_Name(.txt) : ";
 	scanf_s("%s", saveResultWordName, 100);
 	ofstream ofs(saveResultWordName);
 	//動画の名前.avi
@@ -234,35 +248,34 @@ int main()
 	pos.y = 0;
 	putTextJP.setLocate(pos);
 
-	//最初に見つかったカメラを開く
-	cap.open(0);
-	if (!cap.isOpened()) {
-		cout << "カメラの初期化に失敗しました" << endl;
-		return -1;
-	}
-
 	cout << "動作開始" << endl;
-	cvWaitKey();
-
+	cout << "target_word : ";
+	targetWord=randomWordOut(wordNum);
 	cv::namedWindow("Capture");
+	int whileCount = 0;
 	while (1) {
+		whileCount++;
 		// 画像を取得
 		Mat original_frame, copy_frame;
 		Mat gray_Mat;
 		cap >> original_frame;
 		if (original_frame.empty()) break;
 		original_frame.copyTo(copy_frame);
+		Notice_coordinates->x = 0;
+		Notice_coordinates->y = 0;
 		//色追跡
-		meanShift(copy_frame,Notice_coordinates);
+		if (startCheckMeanShift(original_frame)>0){
+			meanShift(copy_frame, Notice_coordinates);
+		}
 		//ARマーカー追跡
 		//ARtracking(copy_frame, Notice_coordinates);
-		if (abs(Notice_coordinates->x - preNotice_coordinates->x) < 5  && abs(Notice_coordinates->y - preNotice_coordinates->y) <5){
+		if (abs(Notice_coordinates->x - preNotice_coordinates->x) < 5 && abs(Notice_coordinates->y - preNotice_coordinates->y) <5){
 			stopCount++;
 		}
 		/*cout << "stopCount = " <<stopCount << endl;
 		cout << "座標x" << Notice_coordinates->x << "座標y" << Notice_coordinates->y << endl;*/
-		if (stopCount ==100 ){
-			sprintf(saveInDirectoryName, "%02d", loopCount+1);
+		if (stopCount == 100){
+			sprintf(saveInDirectoryName, "%02d", loopCount + 1);
 			makeDirectory(saveInDirectoryName);
 			//グレースケール化
 			cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
@@ -321,11 +334,11 @@ int main()
 			//鮮鋭化
 			IplImage * cutOutResizeGFilter_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);//縦横4倍;
 			GaussianBlur((Mat)cutOutResize_img, (Mat)cutOutResizeGFilter_img, cv::Size(11, 11), 6, 6);
-			IplImage *subTmp_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height ), IPL_DEPTH_8U, 1);
+			IplImage *subTmp_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);
 			IplImage *cutOutResizeUnsharp_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);
 			(Mat)subTmp_img = (Mat)cutOutResize_img - (Mat)cutOutResizeGFilter_img;
 			(Mat)cutOutResizeUnsharp_img = (Mat)cutOutResize_img + ((Mat)subTmp_img * 60);
-
+			imwrite("cutOutResizeUnsharp.png", (Mat)cutOutResizeUnsharp_img);
 			//文字認識
 			//char* result_Text = ocr(cutOut_img);
 			char* result_Text = ocr(cutOutResizeUnsharp_img);
@@ -336,7 +349,7 @@ int main()
 			//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 << */endl;
 			//sprintf(str, "%2d.bmp", loopCount+1);
 			//cvSaveImage(str, unsharp_test_img2);
-			
+
 			//翻訳
 			char translate_Text[100] = { " " };
 			Bing_Translator(result_Text, translate_Text);
@@ -351,18 +364,21 @@ int main()
 			cout << translate_Text_View << endl;
 			strtok(result_Text, "\n\0");
 			strtok(translate_Text_View, "\n\0");
-			sprintf_s(total_Text_View,50,"%s : %s",result_Text,translate_Text_View);
+			sprintf_s(total_Text_View, 50, "%s : %s", result_Text, translate_Text_View);
 			//waitKey();
-			ofs << "tesseract : " << result_Text << " , " << "Bing Translator : " << translate_Text << endl;
+			ofs <<"targetWord:" << targetWord <<","<<"tesseract:" << result_Text << "," << "Bing Translator:" << translate_Text << endl;
+			cout << "Next_target_word : ";
+			targetWord = randomWordOut(wordNum);
+			sprintf(saveInDirectoryName, "../%02d", loopCount + 1);
+			_chdir(saveInDirectoryName);
 			stopCount = 0;
 			loopCount++;
-			_chdir("spwork");
 		}
 		//表示
 		//cout << translate_Text_view << endl;
 		rectangle(copy_frame, Point(0, 0), Point(270, 30), Scalar(255, 255, 255), -1, CV_AA);
 		putTextJP.setLocate(pos);
-		putTextJP.putText(copy_frame,total_Text_View, cvScalar(0, 0, 255));
+		putTextJP.putText(copy_frame, total_Text_View, cvScalar(0, 0, 255));
 		cv::imshow("Capture", copy_frame);
 		writer << copy_frame;
 		preNotice_coordinates->x = Notice_coordinates->x;
@@ -373,9 +389,10 @@ int main()
 		//	break;
 		//}
 		if (cv::waitKey(30) >= 0) {
-			cv::imwrite("cap.png",original_frame);
+			cv::imwrite("cap.png", original_frame);
 			break;
 		}
+		cout << whileCount << endl;
 	}
 	cvDestroyWindow("Capture");
 	cap.release();
@@ -454,14 +471,14 @@ void Mouse(int event, int x, int y, int flags, void *param)
 	switch (event){
 	case CV_EVENT_LBUTTONDOWN:
 	{
-		cout << x << "," << y << "\n";
-		data->x = x;
-		data->y = y;
-		break;
+								 cout << x << "," << y << "\n";
+								 data->x = x;
+								 data->y = y;
+								 break;
 	}
 	default:
 	{
-		break;
+			   break;
 	}
 	}
 }
@@ -615,9 +632,9 @@ int Bresenhams_line_algorithm(IplImage* img, Point data){
 	int slopeAngle = 0;
 	ofstream ofs("BMsum.txt");
 
-	CvPoint startPoint = {0}, endPoint;
+	CvPoint startPoint = { 0 }, endPoint;
 
-	
+
 	/*傾き探索範囲の調整*/
 	/*始点の決定(x座標)*/
 	sub = data.x - search_area / 2;
@@ -914,8 +931,8 @@ int cutout(IplImage* threshold_img, cutData *cut)
 	if (end.x == rough_cut_area_width || end.x<rough_cut_area_width / 2) end = edge[1];
 	//cout << "start=" << start.x << " , " << "end=" << end.x << endl;
 
-	cut->x = start.x-3;
-	cut->width = end.x - start.x+3;
+	cut->x = start.x - 3;
+	cut->width = end.x - start.x + 3;
 	//cout << "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa" << endl;
 
 	//cout << "CutRange " << "x=" << cut->x << " , " << "y=" << cut->y << " , " << "width=" << cut->width << " , " << "hight=" << cut->hight << endl;
@@ -932,7 +949,7 @@ char *ocr(IplImage* result_img){
 		fprintf(stderr, "Could not initialize tesseract.\n");
 		exit(1);
 	}
-	api->SetImage(result.data,result.size().width,result.size().height,result.channels(),result.step1());
+	api->SetImage(result.data, result.size().width, result.size().height, result.channels(), result.step1());
 	api->Recognize(0);
 	// Get OCR result
 	outText = api->GetUTF8Text();
@@ -968,7 +985,7 @@ void Bing_Translator(char * in_Text, char *outText)
 			// Translate string			
 			if (BingX.Translate(in_Text, -1, "en", "ja", Result))
 			{
-			/*	printf("\nResult: \"%s\".\n", Result.Info.c_str());
+				/*	printf("\nResult: \"%s\".\n", Result.Info.c_str());
 				ofs << "tesseract : " << trans_word << endl;
 				ofs << "Microsoft Translator : " << Result.Info.c_str() << endl;*/
 				ansText = Result.Info.c_str();
@@ -990,21 +1007,21 @@ void Bing_Translator(char * in_Text, char *outText)
 void meanShift_init(){
 	//閾値
 	hsv_threshold.S_min = 30;
-	hsv_threshold.V_max = 240;
-	hsv_threshold.V_min = 30;
+	hsv_threshold.V_max = 200;
+	hsv_threshold.V_min = 10;
 	cv::namedWindow("Histogram");
-	
+
 	//色追跡の設定
 	Mat track_color_img = (cv::Mat_<float>(16, 1) << 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-	
+
 	//追跡色のヒストグラム
 	Mat histimg = cv::Mat::zeros(200, 320, CV_8UC3);
 	int hsize = 16;
-	
+
 	//ヒストグラムを計算
 	meanshift_hist = track_color_img;
 	//cout << meanshift_hist << endl;
-	
+
 	//表示用にRGBに変換
 	histimg = cv::Scalar::all(0);
 	int binW = histimg.cols / hsize;
@@ -1013,7 +1030,7 @@ void meanShift_init(){
 		buf.at<cv::Vec3b>(i) = cv::Vec3b(cv::saturate_cast<uchar>(i*180. / hsize), 255, 255);
 	}
 	cv::cvtColor(buf, buf, cv::COLOR_HSV2BGR);
-	
+
 	//ヒストグラムを描画
 	for (int i = 0; i < hsize; i++) {
 		int val = cv::saturate_cast<int>(meanshift_hist.at<float>(i)*histimg.rows / 255);
@@ -1024,15 +1041,15 @@ void meanShift_init(){
 	cv::waitKey(0);
 }
 
-void meanShift(Mat in_frame,Point *Notice_coordinates){
+void meanShift(Mat in_frame, Point *Notice_coordinates){
 	Point2f before_center;
-	
+
 	Rect mask_size(0, 0, 640, 480);
 	Rect trackWindow(0, 0, 640, 480);
 	int	color_check = 0;
-	static int count=0;
+	static int count = 0;
 	const float* phranges = meanshift_hranges;
-	
+
 	//HSVに変換
 	cv::Mat hsv;
 	cv::cvtColor(in_frame, hsv, cv::COLOR_BGR2HSV);
@@ -1072,7 +1089,7 @@ void meanShift(Mat in_frame,Point *Notice_coordinates){
 	Point end;
 	Notice_coordinates->x = trackBox.center.x + ((100 + trackBox.size.height / 2) * cos(trackBox.angle*(M_PI / 180) + (M_PI) / 2));
 	Notice_coordinates->y = trackBox.center.y + ((100 + trackBox.size.height / 2) * sin(trackBox.angle*(M_PI / 180) + (M_PI) / 2));
-	arrowedLine(in_frame, trackBox.center, *Notice_coordinates, cv::Scalar(200, 0, 0), 5, CV_AA);	
+	arrowedLine(in_frame, trackBox.center, *Notice_coordinates, cv::Scalar(200, 0, 0), 5, CV_AA);
 	// 選択領域を表示
 	if (data.selectObject && data.selection.width > 0 && data.selection.height > 0) {
 		cv::Rect roi = data.selection & cv::Rect(0, 0, in_frame.cols, in_frame.rows);
@@ -1160,7 +1177,7 @@ void check_OCR()
 	char* result_Text3 = ocr(resize_img3);
 	char* result_Text4 = ocr(resize_img4);
 
-	ofs << result_Text << " , " << result_Text1 << " , " << result_Text2 << " , " << result_Text3 << " , " << result_Text4  << endl;
+	ofs << result_Text << " , " << result_Text1 << " , " << result_Text2 << " , " << result_Text3 << " , " << result_Text4 << endl;
 
 	//ぼかし
 	gaussTest_img = cvCreateImage(cvSize(test_img->width, test_img->height), IPL_DEPTH_8U, 1);
@@ -1188,17 +1205,17 @@ void check_OCR()
 	//char* g_result_Text3 = ocr(g_resize_img3);
 	//char* g_result_Text4 = ocr(g_resize_img4);
 
-	ofs << g_result_Text << " , " << g_result_Text1  << endl;
+	ofs << g_result_Text << " , " << g_result_Text1 << endl;
 
 	//鮮鋭化
 	gaussTest_img2 = cvCreateImage(cvSize(test_img->width, test_img->height), IPL_DEPTH_8U, 1);
-	cv::GaussianBlur((Mat)gaussTest_img, (Mat)gaussTest_img2, cv::Size(3, 3), 6,6);
+	cv::GaussianBlur((Mat)gaussTest_img, (Mat)gaussTest_img2, cv::Size(3, 3), 6, 6);
 	sub_test_img = cvCreateImage(cvSize(test_img->width, test_img->height), IPL_DEPTH_8U, 1);
 	unsharp_test_img = cvCreateImage(cvSize(test_img->width, test_img->height), IPL_DEPTH_8U, 1);
 	(Mat)sub_test_img = (Mat)gaussTest_img - (Mat)gaussTest_img2;
 	(Mat)unsharp_test_img = (Mat)gaussTest_img + ((Mat)sub_test_img * 15);
 
-	g_resize_img1_2=cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//縦横4倍;
+	g_resize_img1_2 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);//縦横4倍;
 	cv::GaussianBlur((Mat)g_resize_img1, (Mat)g_resize_img1_2, cv::Size(11, 11), 6, 6);
 	IplImage *sub_test_img2 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);
 	IplImage *unsharp_test_img2 = cvCreateImage(cvSize(gaussTest_img->width * 4, gaussTest_img->height * 4), IPL_DEPTH_8U, 1);
@@ -1263,7 +1280,7 @@ void testAR()
 	///////////////////////////////////////////  
 	//画像に表示させる立方体の準備。  
 
-	#define MARKER_SIZE (20)       /* マーカーの外側の1辺のサイズ[mm] */  
+#define MARKER_SIZE (20)       /* マーカーの外側の1辺のサイズ[mm] */  
 	//float in_data[] = {
 	//	0, 0, 0, 
 	//	0,0, 0,
@@ -1333,21 +1350,21 @@ void testAR()
 	{
 		switch (i)
 		{
-		case 0: srcPoints3D -> data.fl[0] = 0;
-			srcPoints3D -> data.fl[1] = 0;
-			srcPoints3D -> data.fl[2] = 0;
+		case 0: srcPoints3D->data.fl[0] = 0;
+			srcPoints3D->data.fl[1] = 0;
+			srcPoints3D->data.fl[2] = 0;
 			break;
-		case 1: srcPoints3D -> data.fl[0 + i * 3] = (float)MARKER_SIZE;
-			srcPoints3D -> data.fl[1 + i * 3] = 0;
-			srcPoints3D -> data.fl[2 + i * 3] = 0;
+		case 1: srcPoints3D->data.fl[0 + i * 3] = (float)MARKER_SIZE;
+			srcPoints3D->data.fl[1 + i * 3] = 0;
+			srcPoints3D->data.fl[2 + i * 3] = 0;
 			break;
-		case 2: srcPoints3D -> data.fl[0 + i * 3] = 0;
-			srcPoints3D -> data.fl[1 + i * 3] = (float)MARKER_SIZE;
-			srcPoints3D -> data.fl[2 + i * 3] = 0;
+		case 2: srcPoints3D->data.fl[0 + i * 3] = 0;
+			srcPoints3D->data.fl[1 + i * 3] = (float)MARKER_SIZE;
+			srcPoints3D->data.fl[2 + i * 3] = 0;
 			break;
-		case 3: srcPoints3D -> data.fl[0 + i * 3] = 0;
-			srcPoints3D -> data.fl[1 + i * 3] = 0;
-			srcPoints3D -> data.fl[2 + i * 3] = -(float)MARKER_SIZE;;
+		case 3: srcPoints3D->data.fl[0 + i * 3] = 0;
+			srcPoints3D->data.fl[1 + i * 3] = 0;
+			srcPoints3D->data.fl[2 + i * 3] = -(float)MARKER_SIZE;;
 			break;
 
 		}
@@ -1444,7 +1461,7 @@ void testAR()
 	gray_img = gray_Mat;
 	gray_img_Contour = cvCreateImage(cvGetSize(&gray_img), IPL_DEPTH_8U, 1);
 
-	
+
 
 	cv::namedWindow("test");
 	cv::namedWindow("Capture");
@@ -1510,9 +1527,9 @@ void testAR()
 						notzeroCount = cvCountNonZero(tempmask);
 						if (maxCount< notzeroCount)
 						{
-						maxCount = notzeroCount;
-						markerDirection = 0;
-						sprintf(text,"0deg", notzeroCount);
+							maxCount = notzeroCount;
+							markerDirection = 0;
+							sprintf(text, "0deg", notzeroCount);
 
 						}
 						cvZero(tempmask);
@@ -1546,7 +1563,7 @@ void testAR()
 						cvPutText(marker_inside_zoom, text, cvPoint(70, 70), &dfont, cvScalarAll(255));
 						cvZero(tempmask);
 
-						cvShowImage(" marker_inside" , marker_inside_zoom);
+						cvShowImage(" marker_inside", marker_inside_zoom);
 						//四角の向きを反映させる。  
 						if (markerDirection == 0) {
 							src_pnt[0].x = tmp_pnt[0].x;
@@ -1597,11 +1614,11 @@ void testAR()
 
 						//マーカーの基本となる座標を設定  
 						cvInitMatHeader(&object_points, 4, 3, CV_32FC1, baseMarkerPoints);
-						
+
 						//カメラの内部定数(intrinsticとdistortion)から、rotationとtranslationを求める   
 						cvFindExtrinsicCameraParams2(&object_points, &image_points, intrinsic, distortion, rotation, translation);
 
-						
+
 						//求めたものを使用して、現実空間上の座標が画面上だとどの位置に来るかを計算  
 						cvProjectPoints2(srcPoints3D, rotation, translation, intrinsic, distortion, dstPoints2D);
 						cvProjectPoints2(arrow_srcPoints3D, rotation, translation, intrinsic, distortion, arrow_dstPoints2D);
@@ -1611,7 +1628,7 @@ void testAR()
 						//for (int as = 0; as < 12;as++) {
 						//	cout <<as<<"="<< dstPoints2D->data.fl[as] << endl;
 						//}
-					
+
 						//startpoint = cvPoint((int)dstPoints2D -> data.fl[0], (int)dstPoints2D -> data.fl[1]);
 						//for (j = 1; j< 4; j++) {
 						//	endpoint = cvPoint((int)dstPoints2D -> data.fl[(j)* 2], (int)dstPoints2D -> data.fl[1 + (j)* 2]);
@@ -1630,7 +1647,7 @@ void testAR()
 						//}
 						CvPoint arrow_startPoint;
 						CvPoint arrow_endPoint;
-						arrow_startPoint= cvPoint((int)arrow_dstPoints2D->data.fl[0], (int)arrow_dstPoints2D->data.fl[1]);
+						arrow_startPoint = cvPoint((int)arrow_dstPoints2D->data.fl[0], (int)arrow_dstPoints2D->data.fl[1]);
 						arrow_endPoint = cvPoint((int)arrow_dstPoints2D->data.fl[2], (int)arrow_dstPoints2D->data.fl[3]);
 						arrowedLine((Mat)&img, arrow_startPoint, arrow_endPoint, cv::Scalar(200, 0, 0), 5, CV_AA);
 					}
@@ -1654,12 +1671,12 @@ void testAR()
 
 int Calibrate()
 {
-	#define IMAGE_NUM  (25)         /* 画像数 */
-	#define PAT_ROW    (7)          /* パターンの行数 */
-	#define PAT_COL    (10)         /* パターンの列数 */
-	#define PAT_SIZE   (PAT_ROW*PAT_COL)
-	#define ALL_POINTS (IMAGE_NUM*PAT_SIZE)
-	#define CHESS_SIZE (24.0)       /* パターン1マスの1辺サイズ[mm] */
+#define IMAGE_NUM  (25)         /* 画像数 */
+#define PAT_ROW    (7)          /* パターンの行数 */
+#define PAT_COL    (10)         /* パターンの列数 */
+#define PAT_SIZE   (PAT_ROW*PAT_COL)
+#define ALL_POINTS (IMAGE_NUM*PAT_SIZE)
+#define CHESS_SIZE (24.0)       /* パターン1マスの1辺サイズ[mm] */
 
 	int i, j, k;
 	int corner_count, found;
@@ -1755,14 +1772,14 @@ int Calibrate()
 
 void take_pic()
 {
-	
+
 	char cut_imgName[100];
 	char filePass[200];
 	cv::VideoCapture cap;
 	cv::Size cap_size(640, 480);
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, cap_size.width);
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, cap_size.height);
-	
+
 	cap.open(0);
 	if (!cap.isOpened()) {
 		cout << "カメラの初期化に失敗しました" << endl;
@@ -1784,18 +1801,18 @@ void take_pic()
 		cap >> original_frame;
 		cv::imshow("Capture", original_frame);
 		if (c == 0x73)// 's'キー入力
-		{ 
+		{
 			//for (int i = 0; i < 100;i++){
-				sprintf(cut_imgName, "%02d.bmp", pic_count);
-				cvtColor(original_frame, original_frame, CV_BGR2GRAY);
-				imwrite(cut_imgName, original_frame);
-				sprintf(filePass, "C:/dev/rawdata/%02d.bmp", pic_count);
-				ofs << filePass << " " << "1" << " " << "0" << " " << "0" << " " << "640" << " " << "480" << endl;
-				pic_count++;
+			sprintf(cut_imgName, "%02d.bmp", pic_count);
+			cvtColor(original_frame, original_frame, CV_BGR2GRAY);
+			imwrite(cut_imgName, original_frame);
+			sprintf(filePass, "C:/dev/rawdata/%02d.bmp", pic_count);
+			ofs << filePass << " " << "1" << " " << "0" << " " << "0" << " " << "640" << " " << "480" << endl;
+			pic_count++;
 			//}			
 		}
 
-	}	
+	}
 }
 
 void ARtracking(Mat in_frame, Point *Notice_coordinates)
@@ -1804,7 +1821,7 @@ void ARtracking(Mat in_frame, Point *Notice_coordinates)
 	///////////////////////////////////////////  
 	//画像に表示させる立方体の準備。  
 
-	#define MARKER_SIZE (20)       /* マーカーの外側の1辺のサイズ[mm] */  
+#define MARKER_SIZE (20)       /* マーカーの外側の1辺のサイズ[mm] */  
 	int i, j, k;
 
 	//立方体生成用  
@@ -2095,10 +2112,10 @@ void test_th()
 	cv::VideoWriter th_writer("th_capture1.avi", CV_FOURCC('X', 'V', 'I', 'D'), fps, cap_size);
 
 	cv::Mat original_frame, copy_frame;
-	cv::Mat gray_Mat,threshold_Mat, ad_threshold_Mat;
+	cv::Mat gray_Mat, threshold_Mat, ad_threshold_Mat;
 	IplImage img;
 	IplImage gray_img;
-	IplImage *threshold_img,* ad_threshold_img;
+	IplImage *threshold_img, *ad_threshold_img;
 
 	cv::namedWindow("ad_th");
 	cv::namedWindow("th");
@@ -2116,7 +2133,7 @@ void test_th()
 	original_frame.copyTo(copy_frame);
 	cv::cvtColor(original_frame, gray_Mat, CV_BGR2GRAY);
 	gray_img = gray_Mat;
-	
+
 	while (1)
 	{
 		cap >> original_frame;
@@ -2145,7 +2162,7 @@ void cut_img()
 	char imgName[100], cut_imgName[100];
 	char filePass[200];
 	int img_num = 1;
-	int num=1;
+	int num = 1;
 	while (img_num < 100){
 		sprintf(imgName, "negative/%02d.bmp", img_num);
 		cout << imgName << endl;
@@ -2169,12 +2186,12 @@ void cut_img()
 		sprintf(cut_imgName, "re_negative/%02d.bmp", img_num);
 		Mat cut_img(src_img, selection);
 		//cvtColor(cut_img, cut_img, CV_BGR2GRAY);
-		imwrite(cut_imgName,cut_img);
+		imwrite(cut_imgName, cut_img);
 		sprintf(filePass, "C:/dev/index_finger/%2d.bmp", img_num);
 		//cout << "指の本数を入力＝" << endl;
 		//scanf_s("%d", &num);
 		//ofs << filePass << " " << num << " " << selection.x << " " << selection.y << " " << selection.width << " " << selection.height << endl; 
-		ofs << filePass << endl; 
+		ofs << filePass << endl;
 		img_num++;
 	}
 }
@@ -2194,7 +2211,7 @@ void resize_img()
 		if (!src_img.data){
 			cout << "error" << endl;;
 		}
-		
+
 		namedWindow("Image", 1);
 		//sprintf(resize_imgName, "resize_negative/%02d.bmp", img_num);
 		sprintf(resize_imgName, "resize_negative/dog.bmp");
@@ -2397,21 +2414,21 @@ int init_Hogdata()
 	char fileName[100], outFileName[100];
 
 	cout << "get_Hogdata" << endl;
-	cout << "rawdata_num = " ;
+	cout << "rawdata_num = ";
 	scanf_s("%d", &rawdata_num);
-	cout << "outFileName : " ;
-	scanf_s("%s", outFileName,100);
+	cout << "outFileName : ";
+	scanf_s("%s", outFileName, 100);
 	ofstream ofs(outFileName, std::ios::out | std::ios::app);
 	float * result_vec;
-	int count=0;
-	for (int num = 1; num < rawdata_num+1; num++){
+	int count = 0;
+	for (int num = 1; num < rawdata_num + 1; num++){
 		// 画像をグレイスケールで読み込む
 		//string fileName = "re_rawdata/01.bmp";
 		sprintf(fileName, "resize_negative/%02d.bmp", num);
 		Mat originalImage = imread(fileName, CV_LOAD_IMAGE_GRAYSCALE);
 		int HogSize = floor((originalImage.rows - CELL_SIZE) / CELL_SIZE)*floor((originalImage.cols - CELL_SIZE) / CELL_SIZE)*BLOCK_SIZE*BLOCK_SIZE*N_BIN;
 		//cout << HogSize << endl;
-		result_vec = (float *)malloc(sizeof(double)* (HogSize+1));
+		result_vec = (float *)malloc(sizeof(double)* (HogSize + 1));
 		getHog_another(originalImage, result_vec);
 		for (int i = 0; i<(int)ceil((float)originalImage.rows / (float)CELL_SIZE) - (BLOCK_SIZE - 1); i++){
 			for (int j = 0; j<(int)ceil((float)originalImage.cols / (float)CELL_SIZE) - (BLOCK_SIZE - 1); j++){
@@ -2510,11 +2527,11 @@ void get_Hogdata(Mat input_img, float *Hogdata)
 				}
 			}
 			// L2ノルムで正規化（強い方向が強調される）
-			int num=0;
+			int num = 0;
 			normalize(meanHOGInBlock, meanHOGInBlock, 1, 0, CV_L2);
 			for (int row = 0; row < (int)meanHOGInBlock.rows; row++){
 				for (int col = 0; col < (int)meanHOGInBlock.cols; col++){
-					Hogdata[num] = meanHOGInBlock.at<float>(row, col) ;
+					Hogdata[num] = meanHOGInBlock.at<float>(row, col);
 					num++;
 				}
 			}
@@ -2525,7 +2542,7 @@ void get_Hogdata(Mat input_img, float *Hogdata)
 void get_Boost()
 {
 	float training_Hogdata[Hog_data_num][Hog_num];
-	float training_labels[Hog_data_num] = {-1};
+	float training_labels[Hog_data_num] = { -1 };
 	ifstream ifs("Hogdata_ano2.csv");
 	if (!ifs) {
 		cout << "Error:Input data file not found" << endl;
@@ -2536,8 +2553,8 @@ void get_Boost()
 	CvBoost boost;
 
 	//Hogdataの準備
-	for (int i = 0;i < Hog_data_num; i++){
-		for (int j = 0;j< Hog_num; j++){
+	for (int i = 0; i < Hog_data_num; i++){
+		for (int j = 0; j< Hog_num; j++){
 			getline(ifs, tmp);
 			ss.str(tmp);
 			ss >> training_Hogdata[i][j];
@@ -2546,14 +2563,14 @@ void get_Boost()
 		}
 	}
 	cout << "data load end" << endl;
-	for (int i = 0; i <  100; i++){
+	for (int i = 0; i < 100; i++){
 		training_labels[i] = 1;
 	}
 	Mat Hogdata_Mat(Hog_data_num, Hog_num, CV_32FC1, training_Hogdata);
-	Mat training_labels_Mat(1,Hog_data_num,CV_32FC1, training_labels);
+	Mat training_labels_Mat(1, Hog_data_num, CV_32FC1, training_labels);
 	cout << "Boost training start" << endl;
 	boost.train(Hogdata_Mat, CV_ROW_SAMPLE, training_labels_Mat);
-	cout << "Boost training end" << endl; 
+	cout << "Boost training end" << endl;
 	waitKey();
 	sprintf(true_imgName, "resize_positive/%02d.bmp", 16);
 	cout << true_imgName << endl;
@@ -2573,17 +2590,17 @@ void get_Boost()
 
 	float response1 = boost.predict(true_Hogdata_Mat);
 	if (response1 == 1.0f) {
-		cout <<"true : " <<response1 << endl;
+		cout << "true : " << response1 << endl;
 	}
 	else {
-		cout << "false : "<<response1 << endl;
+		cout << "false : " << response1 << endl;
 	}
 	float response2 = boost.predict(false_Hogdata_Mat);
 	if (response2 == 1.0f) {
-		cout << "true : "<<response2 << endl;
+		cout << "true : " << response2 << endl;
 	}
 	else {
-		cout << "false : " <<response1<< endl;
+		cout << "false : " << response1 << endl;
 	}
 
 	//waitKey(0);
@@ -2597,28 +2614,28 @@ int minimum(int a, int b)
 	return b;
 }
 
-void getHog_another(Mat inImg,float* vec_tmp){
+void getHog_another(Mat inImg, float* vec_tmp){
 	int x, y, i, j, k, m, n, count;// cell_size = 12, rot_res = 9, block_size = 3;
 	float dx, dy, ***hist, norm; //*vec_tmp,
-    IplImage im;
-    CvMat *mag = NULL, *theta = NULL;
+	IplImage im;
+	CvMat *mag = NULL, *theta = NULL;
 	/*ofstream ofs(outFileName, std::ios::out | std::ios::app);
 	if ((im = cvLoadImage(fileName, CV_LOAD_IMAGE_GRAYSCALE)) == 0){
-		fprintf(stderr, "No such file %s", fileName);
-		exit(0);
+	fprintf(stderr, "No such file %s", fileName);
+	exit(0);
 	}*/
 	// magnitude and direction
-	im = (IplImage )inImg;
+	im = (IplImage)inImg;
 	mag = cvCreateMat(im.height, im.width, CV_32F);
 	theta = cvCreateMat(im.height, im.width, CV_32F);
 	for (y = 0; y<im.height; y++){
-	    for (x = 0; x<im.width; x++){
-	        if (x == 0 || x == im.width - 1 || y == 0 || y == im.height - 1){
-	            cvmSet(mag, y, x, 0.0);
-	            cvmSet(theta, y, x, 0.0);
+		for (x = 0; x<im.width; x++){
+			if (x == 0 || x == im.width - 1 || y == 0 || y == im.height - 1){
+				cvmSet(mag, y, x, 0.0);
+				cvmSet(theta, y, x, 0.0);
 			}
-	        else{
-	            dx = double((uchar)im.imageData[y*im.widthStep + x + 1]) - double((uchar)im.imageData[y*im.widthStep + x - 1]);
+			else{
+				dx = double((uchar)im.imageData[y*im.widthStep + x + 1]) - double((uchar)im.imageData[y*im.widthStep + x - 1]);
 				dy = double((uchar)im.imageData[(y + 1)*im.widthStep + x]) - double((uchar)im.imageData[(y - 1)*im.widthStep + x]);
 				cvmSet(mag, y, x, sqrt(dx*dx + dy*dy));
 				cvmSet(theta, y, x, atan(dy / (dx + 0.01)));
@@ -2629,7 +2646,7 @@ void getHog_another(Mat inImg,float* vec_tmp){
 	hist = (float***)malloc(sizeof(float**)* (int)ceil((float)im.height / (float)CELL_SIZE));
 	if (hist == NULL) exit(1);
 	for (i = 0; i<(int)ceil((float)im.height / (float)CELL_SIZE); i++){
-		hist[i] = (float**)malloc(sizeof(float*)*(int)ceil((float)im .width / (float)CELL_SIZE));
+		hist[i] = (float**)malloc(sizeof(float*)*(int)ceil((float)im.width / (float)CELL_SIZE));
 		if (hist[i] == NULL) exit(1);
 		for (j = 0; j<(int)ceil((float)im.width / (float)CELL_SIZE); j++){
 			hist[i][j] = (float *)malloc(sizeof(float)*N_BIN);
@@ -2645,7 +2662,7 @@ void getHog_another(Mat inImg,float* vec_tmp){
 	}
 	for (i = 0; i<(int)ceil((float)im.height / (float)CELL_SIZE); i++){
 		for (j = 0; j<(int)ceil((float)im.width / (float)CELL_SIZE); j++){
-			for (m = i*CELL_SIZE; m<minimum((i + 1)*CELL_SIZE, im.height); m ++){
+			for (m = i*CELL_SIZE; m<minimum((i + 1)*CELL_SIZE, im.height); m++){
 				for (n = j*CELL_SIZE; n<minimum((j + 1)*CELL_SIZE, im.width); n++){
 					hist[i][j][(int)floor((cvmGet(theta, m, n) + CV_PI / 2)*N_BIN / CV_PI)] += cvmGet(mag, m, n);
 				}
@@ -2674,8 +2691,8 @@ void getHog_another(Mat inImg,float* vec_tmp){
 			}
 		}
 	}
-	for (i = 0; i<(int)ceil((float)im.height / (float)CELL_SIZE); i ++) {
-		for (j = 0; j <(int)ceil((float)im.width / (float)CELL_SIZE); j ++) {
+	for (i = 0; i<(int)ceil((float)im.height / (float)CELL_SIZE); i++) {
+		for (j = 0; j <(int)ceil((float)im.width / (float)CELL_SIZE); j++) {
 			free(hist[i][j]);
 		}
 		free(hist[i]);
@@ -2684,4 +2701,63 @@ void getHog_another(Mat inImg,float* vec_tmp){
 	//free(vec_tmp);
 	cvReleaseMat(&mag);
 	cvReleaseMat(&theta);
+}
+
+int startCheckMeanShift(Mat inImg)
+{
+	int colorCount = 0;
+	cv::Mat hsv;
+	cv::cvtColor(inImg, hsv, cv::COLOR_BGR2HSV);
+	int ch[] = { 0, 0 };
+	cv::Mat hue(hsv.size(), hsv.depth());
+	mixChannels(&hsv, 1, &hue, 1, ch, 1);
+	for (int i = 0; i < hue.rows; i++){
+		for (int j = 0; j < hue.cols; j++){
+			for (int c = 0; c < hue.channels(); ++c){
+				//cout << (int)hue.data[i * hue.step + j * hue.elemSize() + c] << endl;
+				if ((int)hue.data[i * hue.step + j * hue.elemSize() + c] < 11){
+					colorCount++;
+				}
+			}
+		}
+	}
+	//getchar();
+	cout << colorCount << endl;
+	if (colorCount < 25000){
+		return -1;
+	}
+	else {
+		return 1;
+	}
+}
+
+int readWordList(char* wordListName)
+{
+	ifstream ifs(wordListName);
+	int listCount = 0;
+	if (ifs.fail())
+	{
+		cerr << "失敗" << std::endl;
+		exit(1);
+	}
+	string tmp;
+	while (getline(ifs, tmp)){
+		wordlist[listCount] = tmp;
+		listCount++;
+		//cout << "[" << tmp << "]" << std::endl;
+	}
+	return listCount;
+}
+
+String randomWordOut(int maxWordNum)
+{
+	int wordNum = rand() % maxWordNum;
+	cout << wordlist[wordNum] << endl;
+	return wordlist[wordNum];
+}
+
+inline void InitRand()
+{
+	//cout << now << endl;
+	srand((unsigned int)now);
 }
