@@ -130,7 +130,6 @@ IplImage * tempmask = cvCloneImage(mask0);//作業用
 Rect selection;
 int select_object;
 
-
 /*Hog計算用*/
 // ヒストグラムのビン数
 #define N_BIN 9
@@ -151,7 +150,6 @@ int select_object;
 //拡大倍率
 #define Resize_Rate 4
 
-
 int main()
 {
 	//動作確認用関数
@@ -165,7 +163,7 @@ int main()
 	//test_Hog();
 	//init_Hogdata();
 	//get_Boost();
-
+	//CAM("test");
 
 	Data mouse_Data;
 	cutData cut;
@@ -183,16 +181,16 @@ int main()
 	int loopCount = 0;
 	int ch;
 	
-
 	//ARの初期設定
-	CvFileStorage *fs;
-	CvFileNode *param;
-	fs = cvOpenFileStorage("camera.xml", 0, CV_STORAGE_READ);
-	param = cvGetFileNodeByName(fs, NULL, "intrinsic");
-	intrinsic = (CvMat *)cvRead(fs, param);
-	param = cvGetFileNodeByName(fs, NULL, "distortion");
-	distortion = (CvMat *)cvRead(fs, param);
-	cvReleaseFileStorage(&fs);
+	//CvFileStorage *fs;
+	//CvFileNode *param;
+	//fs = cvOpenFileStorage("camera.xml", 0, CV_STORAGE_READ);
+	//param = cvGetFileNodeByName(fs, NULL, "intrinsic");
+	//intrinsic = (CvMat *)cvRead(fs, param);
+	//param = cvGetFileNodeByName(fs, NULL, "distortion");
+	//distortion = (CvMat *)cvRead(fs, param);
+	//cvReleaseFileStorage(&fs);
+
 
 	//カメラの初期設定(画像サイズの設定)
 	cv::VideoCapture cap;
@@ -225,13 +223,6 @@ int main()
 	char saveImageName[100];
 	cout << "Save_Image_Name : ";
 	scanf_s("%s", saveImageName, 100);
-	
-	// 最初に見つかったカメラを開く
-	cap.open(1);
-	if (!cap.isOpened()) {
-		cout << "カメラの初期化に失敗しました" << endl;
-		return -1;
-	}
 
 	//色追跡の設定
 	meanShift_init();
@@ -242,6 +233,13 @@ int main()
 	pos.x = 0;
 	pos.y = 0;
 	putTextJP.setLocate(pos);
+
+	//最初に見つかったカメラを開く
+	cap.open(0);
+	if (!cap.isOpened()) {
+		cout << "カメラの初期化に失敗しました" << endl;
+		return -1;
+	}
 
 	cout << "動作開始" << endl;
 	cvWaitKey();
@@ -400,7 +398,7 @@ void CAM(char* filename)
 {
 	const double WIDTH = 640;  // 幅
 	const double HEIGHT = 480; // 高さ
-	const int CAMERANUM = 0; // カメラ番号
+	const int CAMERANUM = 1; // カメラ番号
 	/*画像関係*/
 	CvCapture *capture = NULL;
 	IplImage *frame = 0;
@@ -1765,7 +1763,7 @@ void take_pic()
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, cap_size.width);
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, cap_size.height);
 	
-	cap.open(1);
+	cap.open(0);
 	if (!cap.isOpened()) {
 		cout << "カメラの初期化に失敗しました" << endl;
 		//return -1;
