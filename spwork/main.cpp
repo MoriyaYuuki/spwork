@@ -169,7 +169,7 @@ int main()
 	//init_Hogdata();
 	//get_Boost();
 	//CAM("test");
-	int wordNum = readWordList("wordList.txt");
+	int wordNum = readWordList("wordList_print1.txt");
 	InitRand();
 	String targetWord;
 
@@ -206,7 +206,7 @@ int main()
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, cap_size.height);
 
 	//最初に見つかったカメラを開く
-	cap.open(1);
+	cap.open(0);
 	if (!cap.isOpened()) {
 		cout << "カメラの初期化に失敗しました" << endl;
 		return -1;
@@ -269,12 +269,15 @@ int main()
 		}
 		//ARマーカー追跡
 		//ARtracking(copy_frame, Notice_coordinates);
-		if (abs(Notice_coordinates->x - preNotice_coordinates->x) < 5 && abs(Notice_coordinates->y - preNotice_coordinates->y) <5){
-			stopCount++;
+		//cout << Notice_coordinates->x << " , " << -preNotice_coordinates->x << endl;
+		if (Notice_coordinates->x != 0 && Notice_coordinates->y != 0) {
+			if (abs(Notice_coordinates->x - preNotice_coordinates->x) < 5 && abs(Notice_coordinates->y - preNotice_coordinates->y) <5){
+				stopCount++;
+			}
 		}
 		/*cout << "stopCount = " <<stopCount << endl;
 		cout << "座標x" << Notice_coordinates->x << "座標y" << Notice_coordinates->y << endl;*/
-		if (stopCount == 100){
+		if (stopCount == 50){
 			sprintf(saveInDirectoryName, "%02d", loopCount + 1);
 			makeDirectory(saveInDirectoryName);
 			//グレースケール化
@@ -327,6 +330,7 @@ int main()
 			//cvNamedWindow("cutOut_img");
 			//cvShowImage("cutOut_img", cutOut_img);
 			//waitKey();
+			
 			//画像補間+鮮鋭化
 			//4倍に拡大
 			IplImage *cutOutResize_img = cvCreateImage(cvSize(cutOut_img->width * Resize_Rate, cutOut_img->height * Resize_Rate), IPL_DEPTH_8U, 1);
@@ -339,9 +343,11 @@ int main()
 			(Mat)subTmp_img = (Mat)cutOutResize_img - (Mat)cutOutResizeGFilter_img;
 			(Mat)cutOutResizeUnsharp_img = (Mat)cutOutResize_img + ((Mat)subTmp_img * 60);
 			imwrite("cutOutResizeUnsharp.png", (Mat)cutOutResizeUnsharp_img);
+		
 			//文字認識
 			char* result_Text = ocr(cutOut_img);
-			char* result_TextUnsharp = ocr(cutOutResizeUnsharp_img);
+			cout << result_Text << endl;
+			//char* result_TextUnsharp = ocr(cutOutResizeUnsharp_img);
 			//char* result_Text1 = ocr(unsharp_test_img2);
 			//cout << "Normal : " << result_Text << "Nearest : " << result_Text1 << /*"Linear : " <<*/ /*result_Text2 <<
 			//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 <<*/ endl;
@@ -349,13 +355,14 @@ int main()
 			//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 << */endl;
 			//sprintf(str, "%2d.bmp", loopCount+1);
 			//cvSaveImage(str, unsharp_test_img2);
-
+			
 			//翻訳
 			char translate_Text[100] = { " " };
-			char translate_TextUnsharp[100] = { " " };
+			//char translate_TextUnsharp[100] = { " " };
 			Bing_Translator(result_Text, translate_Text);
-			Bing_Translator(result_TextUnsharp, translate_TextUnsharp);
-			//cout << translate_Text << endl;
+			//Bing_Translator(result_TextUnsharp, translate_TextUnsharp);
+			cout << translate_Text << endl;
+			
 			//標示用型変換
 			int nSize = 0;
 			ConvUtf8toSJis((BYTE*)(translate_Text), NULL, &nSize);
@@ -369,11 +376,11 @@ int main()
 			sprintf_s(total_Text_View, 50, "%s : %s", result_Text, translate_Text_View);
 			//waitKey();
 			ofs << "targetWord:" << targetWord << "," << "tesseract:" << result_Text << "," << "Bing Translator:" << translate_Text << endl;
-			ofs << "targetWord:" << targetWord << "," << "tesseractUnsharp:" << result_TextUnsharp << "," << "Bing TranslatorUnsharp:" << translate_TextUnsharp << endl;
+			//ofs << "targetWord:" << targetWord << "," << "tesseractUnsharp:" << result_TextUnsharp << "," << "Bing TranslatorUnsharp:" << translate_TextUnsharp << endl;
 			cout << "Next_target_word : ";
 			targetWord = randomWordOut(wordNum);
 			sprintf(saveInDirectoryName, "../%02d", loopCount + 1);
-			_chdir(saveInDirectoryName);
+			//_chdir(saveInDirectoryName);
 			stopCount = 0;
 			loopCount++;
 		}
@@ -1011,7 +1018,7 @@ void meanShift_init(){
 	//閾値
 	hsv_threshold.S_min = 30;
 	hsv_threshold.V_max = 200;
-	hsv_threshold.V_min = 10;
+	hsv_threshold.V_min = 50;
 	cv::namedWindow("Histogram");
 
 	//色追跡の設定
@@ -2726,7 +2733,7 @@ int startCheckMeanShift(Mat inImg)
 	}
 	//getchar();
 	//cout << colorCount << endl;
-	if (colorCount < 25000){
+	if (colorCount < 20000){
 		return -1;
 	}
 	else {
@@ -2740,7 +2747,7 @@ int readWordList(char* wordListName)
 	int listCount = 0;
 	if (ifs.fail())
 	{
-		cerr << "失敗" << std::endl;
+		cerr << "失敗:読み込むリストがありません" << std::endl;
 		exit(1);
 	}
 	string tmp;
