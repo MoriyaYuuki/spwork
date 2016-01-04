@@ -206,7 +206,7 @@ int main()
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, cap_size.height);
 
 	//最初に見つかったカメラを開く
-	cap.open(0);
+	cap.open(1);
 	if (!cap.isOpened()) {
 		cout << "カメラの初期化に失敗しました" << endl;
 		return -1;
