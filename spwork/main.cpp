@@ -212,6 +212,9 @@ int main()
 		return -1;
 	}
 
+	char test[100];
+	Bing_Translator("morning", test);
+	//cout << test << endl;
 	// 動画保存設定
 	int fps = 8;
 	//cvGetCaptureProperty((CvCapture *)cap, CV_CAP_PROP_FPS);
@@ -313,8 +316,8 @@ int main()
 			//cvWaitKey(0);
 			//二値化
 			IplImage *threshold_img = cvCreateImage(cvGetSize(rough_cut_img), IPL_DEPTH_8U, 1);
-			threshold(rough_cut_img, threshold_img);
-			//adaptiveThreshold((Mat)rough_cut_img, (Mat)threshold_img, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
+			//threshold(rough_cut_img, threshold_img);
+			adaptiveThreshold((Mat)rough_cut_img, (Mat)threshold_img, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
 			imwrite("threshold.png", (Mat)threshold_img);
 			//cvNamedWindow("rough_th");
 			//cvShowImage("rough_th", threshold_img);
@@ -347,7 +350,7 @@ int main()
 			//文字認識
 			char* result_Text = ocr(cutOut_img);
 			cout << result_Text << endl;
-			//char* result_TextUnsharp = ocr(cutOutResizeUnsharp_img);
+			char* result_TextUnsharp = ocr(cutOutResizeUnsharp_img);
 			//char* result_Text1 = ocr(unsharp_test_img2);
 			//cout << "Normal : " << result_Text << "Nearest : " << result_Text1 << /*"Linear : " <<*/ /*result_Text2 <<
 			//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 <<*/ endl;
@@ -358,10 +361,10 @@ int main()
 			
 			//翻訳
 			char translate_Text[100] = { " " };
-			//char translate_TextUnsharp[100] = { " " };
+			char translate_TextUnsharp[100] = { " " };
 			Bing_Translator(result_Text, translate_Text);
-			//Bing_Translator(result_TextUnsharp, translate_TextUnsharp);
-			cout << translate_Text << endl;
+			Bing_Translator(result_TextUnsharp, translate_TextUnsharp);
+			//cout << translate_Text << endl;
 			
 			//標示用型変換
 			int nSize = 0;
@@ -376,11 +379,11 @@ int main()
 			sprintf_s(total_Text_View, 50, "%s : %s", result_Text, translate_Text_View);
 			//waitKey();
 			ofs << "targetWord:" << targetWord << "," << "tesseract:" << result_Text << "," << "Bing Translator:" << translate_Text << endl;
-			//ofs << "targetWord:" << targetWord << "," << "tesseractUnsharp:" << result_TextUnsharp << "," << "Bing TranslatorUnsharp:" << translate_TextUnsharp << endl;
+			ofs << "targetWord:" << targetWord << "," << "tesseractUnsharp:" << result_TextUnsharp << "," << "Bing TranslatorUnsharp:" << translate_TextUnsharp << endl;
 			cout << "Next_target_word : ";
 			targetWord = randomWordOut(wordNum);
 			sprintf(saveInDirectoryName, "../%02d", loopCount + 1);
-			//_chdir(saveInDirectoryName);
+			_chdir(saveInDirectoryName);
 			stopCount = 0;
 			loopCount++;
 		}
@@ -394,10 +397,10 @@ int main()
 		preNotice_coordinates->x = Notice_coordinates->x;
 		preNotice_coordinates->y = Notice_coordinates->y;
 		ch = cvWaitKey(1); // 0 はディレイ時間 (ミリ秒単位)
-		//if (ch == '\x1b') {
-		//	// ESC キー
-		//	break;
-		//}
+		if (ch == '\x1b') {
+			// ESC キー
+			break;
+		}
 		if (cv::waitKey(30) >= 0) {
 			cv::imwrite("cap.png", original_frame);
 			break;
@@ -984,6 +987,7 @@ void Bing_Translator(char * in_Text, char *outText)
 {
 	const char *ansText = " ";
 	BingTranslate::RESULT Result;
+	//cout << "ok1" << endl;
 	if (BingTranslate::Translator::CanConnect(Result))
 	{
 		//printf("Connected via: \"%s\".\n", Result.Info.c_str());
@@ -992,6 +996,7 @@ void Bing_Translator(char * in_Text, char *outText)
 		BingTranslate::Translator BingX(MY_ID, MY_KEY, Result);
 		if (Result.IsSuccess())
 		{
+			//cout << "ok2" << endl;
 			// Translate string			
 			if (BingX.Translate(in_Text, -1, "en", "ja", Result))
 			{
@@ -999,6 +1004,7 @@ void Bing_Translator(char * in_Text, char *outText)
 				ofs << "tesseract : " << trans_word << endl;
 				ofs << "Microsoft Translator : " << Result.Info.c_str() << endl;*/
 				ansText = Result.Info.c_str();
+				
 			}
 		}
 
@@ -1010,6 +1016,7 @@ void Bing_Translator(char * in_Text, char *outText)
 		printf("Error! Can't connect to the Bing Translator.\n");
 		printf("Reason: \"%s\".\n", Result.Info.c_str());
 	}
+	//cout << "ok3" << endl;
 	strcpy_s(outText, 100, ansText);
 }
 
@@ -1017,7 +1024,7 @@ void Bing_Translator(char * in_Text, char *outText)
 void meanShift_init(){
 	//閾値
 	hsv_threshold.S_min = 30;
-	hsv_threshold.V_max = 200;
+	hsv_threshold.V_max = 220;
 	hsv_threshold.V_min = 50;
 	cv::namedWindow("Histogram");
 
@@ -1084,8 +1091,8 @@ void meanShift(Mat in_frame, Point *Notice_coordinates){
 
 	// CamShiftアルゴリズム
 	cv::RotatedRect trackBox = cv::CamShift(backproj, trackWindow, cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 10, 1));
-	/*cout << trackBox.angle << " " << trackBox.size << endl;
-	cout << Notice_coordinates.x <<" "<<Notice_coordinates.y << endl;*/
+	//cout << trackBox.angle << " " << trackBox.size << endl;
+	//cout << Notice_coordinates.x <<" "<<Notice_coordinates.y << endl;*/
 	if (before_center == trackBox.center){
 		count++;
 	}
@@ -1094,11 +1101,17 @@ void meanShift(Mat in_frame, Point *Notice_coordinates){
 	}
 	before_center = trackBox.center;
 	// 表示
-	//ellipse(in_frame, trackBox, cv::Scalar(0, 0, 255), 3, 16); // cv::LINE_AA=16
+	ellipse(in_frame, trackBox, cv::Scalar(0, 0, 255), 3, 16); // cv::LINE_AA=16
 	//矢印の終点計算
 	Point end;
-	Notice_coordinates->x = trackBox.center.x + ((100 + trackBox.size.height / 2) * cos(trackBox.angle*(M_PI / 180) + (M_PI) / 2));
-	Notice_coordinates->y = trackBox.center.y + ((100 + trackBox.size.height / 2) * sin(trackBox.angle*(M_PI / 180) + (M_PI) / 2));
+	if (trackBox.angle < 90){
+		Notice_coordinates->x = trackBox.center.x + ((100 + trackBox.size.height / 2) * cos(trackBox.angle*(M_PI / 180) + (M_PI) / 2)*-1);
+		Notice_coordinates->y = trackBox.center.y + ((100 + trackBox.size.height / 2) * sin(trackBox.angle*(M_PI / 180) + (M_PI) / 2)*-1);
+	}
+	else {
+		Notice_coordinates->x = trackBox.center.x + ((100 + trackBox.size.height / 2) * cos(trackBox.angle*(M_PI / 180) + (M_PI) / 2));
+		Notice_coordinates->y = trackBox.center.y + ((100 + trackBox.size.height / 2) * sin(trackBox.angle*(M_PI / 180) + (M_PI) / 2));
+	}
 	arrowedLine(in_frame, trackBox.center, *Notice_coordinates, cv::Scalar(200, 0, 0), 5, CV_AA);
 	// 選択領域を表示
 	if (data.selectObject && data.selection.width > 0 && data.selection.height > 0) {
