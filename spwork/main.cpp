@@ -108,6 +108,7 @@ int startCheckMeanShift(Mat inImg);
 int readWordList(char* wordListName);
 String randomWordOut(int maxWordNum);
 inline void InitRand();
+int checkWordForm(char* ocrWord, char* tranceWord);
 
 /*時間の取得*/
 time_t now = time(NULL);
@@ -153,7 +154,7 @@ int select_object;
 //拡大倍率
 #define Resize_Rate 4
 
-string wordlist[100];
+string wordlist[300];
 
 int main()
 {
@@ -169,9 +170,12 @@ int main()
 	//init_Hogdata();
 	//get_Boost();
 	//CAM("test");
-	int wordNum = readWordList("wordList_print1.txt");
+	//cout << checkWordForm("test ", "  test t") << endl;
+
+	int wordNum = readWordList("print_wordList.txt");
 	InitRand();
 	String targetWord;
+
 
 	Data mouse_Data;
 	cutData cut;
@@ -187,6 +191,7 @@ int main()
 	preNotice_coordinates = new Point;
 	int stopCount = 0;
 	int loopCount = 0;
+	int okCount = 0;
 	int ch;
 
 	//ARの初期設定
@@ -256,7 +261,7 @@ int main()
 	targetWord = randomWordOut(wordNum);
 	cv::namedWindow("Capture");
 	int whileCount = 0;
-	while (1) {
+	while (okCount<50) {
 		whileCount++;
 		// 画像を取得
 		Mat original_frame, copy_frame;
@@ -280,7 +285,7 @@ int main()
 		}
 		/*cout << "stopCount = " <<stopCount << endl;
 		cout << "座標x" << Notice_coordinates->x << "座標y" << Notice_coordinates->y << endl;*/
-		if (stopCount == 50){
+		if (stopCount == 15){
 			sprintf(saveInDirectoryName, "%02d", loopCount + 1);
 			makeDirectory(saveInDirectoryName);
 			//グレースケール化
@@ -325,67 +330,112 @@ int main()
 			//単語の切り出し
 			IplImage *cutOut_img = cvCreateImage(cvGetSize(threshold_img), IPL_DEPTH_8U, 1);
 			cutout(threshold_img, &cut);
-			cvSetImageROI(threshold_img, cvRect(cut.x, cut.y, cut.width, cut.hight));
-			cutOut_img = cvCreateImage(cvGetSize(threshold_img), IPL_DEPTH_8U, 1);
-			cvCopy(threshold_img, cutOut_img);
-			cvResetImageROI(threshold_img);
-			imwrite("cutOut.png", (Mat)cutOut_img);
-			//cvNamedWindow("cutOut_img");
-			//cvShowImage("cutOut_img", cutOut_img);
-			//waitKey();
-			
-			//画像補間+鮮鋭化
-			//4倍に拡大
-			IplImage *cutOutResize_img = cvCreateImage(cvSize(cutOut_img->width * Resize_Rate, cutOut_img->height * Resize_Rate), IPL_DEPTH_8U, 1);
-			resize((Mat)cutOut_img, (Mat)cutOutResize_img, cvSize(cutOut_img->width * Resize_Rate, cutOut_img->height * Resize_Rate), INTER_NEAREST);
-			//鮮鋭化
-			IplImage * cutOutResizeGFilter_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);//縦横4倍;
-			GaussianBlur((Mat)cutOutResize_img, (Mat)cutOutResizeGFilter_img, cv::Size(11, 11), 6, 6);
-			IplImage *subTmp_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);
-			IplImage *cutOutResizeUnsharp_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);
-			(Mat)subTmp_img = (Mat)cutOutResize_img - (Mat)cutOutResizeGFilter_img;
-			(Mat)cutOutResizeUnsharp_img = (Mat)cutOutResize_img + ((Mat)subTmp_img * 60);
-			imwrite("cutOutResizeUnsharp.png", (Mat)cutOutResizeUnsharp_img);
-		
-			//文字認識
-			char* result_Text = ocr(cutOut_img);
-			cout << result_Text << endl;
-			char* result_TextUnsharp = ocr(cutOutResizeUnsharp_img);
-			//char* result_Text1 = ocr(unsharp_test_img2);
-			//cout << "Normal : " << result_Text << "Nearest : " << result_Text1 << /*"Linear : " <<*/ /*result_Text2 <<
-			//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 <<*/ endl;
-			//ofs << "Normal : " << result_Text << "Nearest : " << result_Text1 << /*"Linear : " << *//*result_Text2 <<
-			//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 << */endl;
-			//sprintf(str, "%2d.bmp", loopCount+1);
-			//cvSaveImage(str, unsharp_test_img2);
-			
-			//翻訳
-			char translate_Text[100] = { " " };
-			char translate_TextUnsharp[100] = { " " };
-			Bing_Translator(result_Text, translate_Text);
-			Bing_Translator(result_TextUnsharp, translate_TextUnsharp);
-			//cout << translate_Text << endl;
-			
-			//標示用型変換
-			int nSize = 0;
-			ConvUtf8toSJis((BYTE*)(translate_Text), NULL, &nSize);
-			BYTE* translate_Text_sjis = new BYTE[nSize + 1];
-			ZeroMemory(translate_Text_sjis, nSize + 1);
-			ConvUtf8toSJis((BYTE*)(translate_Text), translate_Text_sjis, &nSize);
-			translate_Text_View = (char *)translate_Text_sjis;
-			cout << translate_Text_View << endl;
-			strtok(result_Text, "\n\0");
-			strtok(translate_Text_View, "\n\0");
-			sprintf_s(total_Text_View, 50, "%s : %s", result_Text, translate_Text_View);
-			//waitKey();
-			ofs << "targetWord:" << targetWord << "," << "tesseract:" << result_Text << "," << "Bing Translator:" << translate_Text << endl;
-			ofs << "targetWord:" << targetWord << "," << "tesseractUnsharp:" << result_TextUnsharp << "," << "Bing TranslatorUnsharp:" << translate_TextUnsharp << endl;
-			cout << "Next_target_word : ";
-			targetWord = randomWordOut(wordNum);
-			sprintf(saveInDirectoryName, "../%02d", loopCount + 1);
-			_chdir(saveInDirectoryName);
+			if (cut.hight > 0 && cut.width > 0 && cut.x< threshold_img->width && cut.y < threshold_img->height && cut.x + cut.width >= (int)(cut.width>0) && cut.y + cut.hight >= (int)(cut.hight>0)){
+				cvSetImageROI(threshold_img, cvRect(cut.x, cut.y, cut.width, cut.hight));
+				cutOut_img = cvCreateImage(cvGetSize(threshold_img), IPL_DEPTH_8U, 1);
+				cvCopy(threshold_img, cutOut_img);
+				cvResetImageROI(threshold_img);
+				imwrite("cutOut.png", (Mat)cutOut_img);
+				//cvNamedWindow("cutOut_img");
+				//cvShowImage("cutOut_img", cutOut_img);
+				//waitKey();
+
+				//画像補間+鮮鋭化
+				//4倍に拡大
+				IplImage *cutOutResize_img = cvCreateImage(cvSize(cutOut_img->width * Resize_Rate, cutOut_img->height * Resize_Rate), IPL_DEPTH_8U, 1);
+				resize((Mat)cutOut_img, (Mat)cutOutResize_img, cvSize(cutOut_img->width * Resize_Rate, cutOut_img->height * Resize_Rate), INTER_NEAREST);
+				//鮮鋭化
+				IplImage * cutOutResizeGFilter_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);//縦横4倍;
+				GaussianBlur((Mat)cutOutResize_img, (Mat)cutOutResizeGFilter_img, cv::Size(11, 11), 6, 6);
+				IplImage *subTmp_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);
+				IplImage *cutOutResizeUnsharp_img = cvCreateImage(cvSize(cutOutResize_img->width, cutOutResize_img->height), IPL_DEPTH_8U, 1);
+				(Mat)subTmp_img = (Mat)cutOutResize_img - (Mat)cutOutResizeGFilter_img;
+				(Mat)cutOutResizeUnsharp_img = (Mat)cutOutResize_img + ((Mat)subTmp_img * 60);
+				imwrite("cutOutResizeUnsharp.png", (Mat)cutOutResizeUnsharp_img);
+
+				//文字認識
+				char* result_Text = ocr(cutOutResizeUnsharp_img);
+				//char* result_Text = ocr(cutOut_img);
+				cout << result_Text << endl;
+				//char* result_TextUnsharp = ocr(cutOutResizeUnsharp_img);
+				//char* result_Text1 = ocr(unsharp_test_img2);
+				//cout << "Normal : " << result_Text << "Nearest : " << result_Text1 << /*"Linear : " <<*/ /*result_Text2 <<
+				//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 <<*/ endl;
+				//ofs << "Normal : " << result_Text << "Nearest : " << result_Text1 << /*"Linear : " << *//*result_Text2 <<
+				//	"Cubic : " << result_Text3 << "Lanczos : " << result_Text4 << */endl;
+				//sprintf(str, "%2d.bmp", loopCount+1);
+				//cvSaveImage(str, unsharp_test_img2);
+
+				//翻訳
+				char translate_Text[100] = { " " };
+				//char translate_TextUnsharp[100] = { " " };
+				Bing_Translator(result_Text, translate_Text);
+				//Bing_Translator(result_TextUnsharp, translate_TextUnsharp);
+				//cout << translate_Text << endl;
+				//標示用型変換
+				int nSize = 0;
+				ConvUtf8toSJis((BYTE*)(translate_Text), NULL, &nSize);
+				BYTE* translate_Text_sjis = new BYTE[nSize + 1];
+				ZeroMemory(translate_Text_sjis, nSize + 1);
+				ConvUtf8toSJis((BYTE*)(translate_Text), translate_Text_sjis, &nSize);
+				translate_Text_View = (char *)translate_Text_sjis;
+				cout << translate_Text_View << endl;
+				strtok(result_Text, "\n\0");
+				strtok(translate_Text_View, "\n\0");
+				sprintf_s(total_Text_View, 50, "%s : %s", result_Text, translate_Text_View);
+				//waitKey();
+				ofs << "targetWord:" << targetWord << "," << "tesseract:" << result_Text << "," << "Bing Translator:" << translate_Text << endl;
+				//ofs << "targetWord:" << targetWord << "," << "tesseractUnsharp:" << result_TextUnsharp << "," << "Bing TranslatorUnsharp:" << translate_TextUnsharp << endl;
+				if (checkWordForm(result_Text, translate_Text) == 1){
+					cout << "yes or no" << endl;
+					char check[10];
+					scanf_s("%s", check, 10);
+					if (strcmp(check, "y") == 0){
+						cout << "Next_target_word : ";
+						targetWord = randomWordOut(wordNum);
+						okCount++;
+					}
+					else {
+						cout << "続ける" << endl;
+					}
+				}
+				else {
+					ofs << "targetWord:" << targetWord << "," << "tesseract:" << result_Text << "," << "Bing Translator:" << translate_Text << endl;
+					cout << "翻訳失敗(もう一度)" << endl;
+					cout << "あきらめる　[y/n]" << endl;
+					char key[10];
+					scanf_s("%s",key , 10);
+					if (strcmp(key, "y")==0){
+						cout << "Next_target_word : ";
+						targetWord = randomWordOut(wordNum);
+						okCount++;
+					}
+					else {
+						cout << "続ける" << endl;
+					}
+				}
+			}
+			else {
+				cout << "切りだし失敗" << endl;
+				ofs << "targetWord:" << targetWord << "," << "tesseract:" <<"切りだし失敗" << "," << "Bing Translator:" << "切りだし失敗" << endl;
+				cout << "あきらめる　[y/n]" << endl;
+				char key[10];
+				scanf_s("%s", key, 10);
+				if (strcmp(key, "y") == 0){
+					cout << "Next_target_word : ";
+					targetWord = randomWordOut(wordNum);
+					okCount++;
+				}
+				else {
+					cout << "続ける" << endl;
+				}
+			}
+			//sprintf(saveInDirectoryName, "../%02d", loopCount + 1);
+			//_chdir(saveInDirectoryName);
+			SetCurrentDirectory("..");
 			stopCount = 0;
 			loopCount++;
+			cout << "okCount : " << okCount << endl;
 		}
 		//表示
 		//cout << translate_Text_view << endl;
@@ -790,17 +840,22 @@ int cutout(IplImage* threshold_img, cutData *cut)
 	int num = 0, brank_num = 0;
 	int maxBrightness = 0;
 	int maxBrightness_EndPoint = 0;
-	unsigned  int y_th = 0;
+	unsigned int y_th = 0;
+	unsigned int x_th = 0;
 	int pre_sum;
 	totalData bank[300], start, end, temp, edge[2];
 	Rect y_axis_brank[10];
+	Rect x_axis_brank[10];
+	//Rect edge1[2], start, end, temp;
 
 	sprintf(cutData_fileName, "cutData_%d%02d%02d%02d%02d.txt",
 		pnow->tm_year + 1900, pnow->tm_mon + 1, pnow->tm_mday, pnow->tm_hour, pnow->tm_min);
 	ofstream ofs(cutData_fileName);
 
 	/*y方向*/
-	y_th = threshold_img->width * 255;
+	ofs << "y_axis_brank_data" << endl;
+	y_th = threshold_img->width * 255 * 1;
+	cout << "y_th=" << y_th << endl;
 	for (int j = 0; j < threshold_img->width; j++){
 		sum += (uchar)threshold_img->imageData[threshold_img->widthStep * 0 + j];
 	}
@@ -810,35 +865,43 @@ int cutout(IplImage* threshold_img, cutData *cut)
 		for (int j = 0; j < threshold_img->width; j++){
 			sum += (uchar)threshold_img->imageData[threshold_img->widthStep * i + j];
 		}
+		ofs << sum << endl;
 		//cout << sum << endl;
-		if (sum >= y_th && count == 0){
-			y_axis_brank[brank_num].y = i;
-			pre_sum = sum;
-			//cout << "start" << endl;
-		}
 		if (sum >= y_th){
-			count++;
-			//cout << "count=" << count << endl;
-			if (i == (rough_cut_area_hight - 1)){
-				y_axis_brank[brank_num].height = count;
-				//cout << "brank_num=" << brank_num << "y=" << y_axis_brank[brank_num].y << "hight=" << y_axis_brank[brank_num].height << endl;
-				brank_num++;
-				count = 0;
+			if (count == 0){
+				y_axis_brank[brank_num].y = i;
+				pre_sum = sum;
+				count++;
+				//cout << "start" << endl;
+			}
+			else {
+				//cout << "count=" << count << endl;
+				if (i == (rough_cut_area_hight - 1)){
+					y_axis_brank[brank_num].height = count;
+					//cout << "brank_num=" << brank_num << "y=" << y_axis_brank[brank_num].y << "hight=" << y_axis_brank[brank_num].height << endl;
+					//brank_num++;
+					count = 0;
+				}
+				count++;
 			}
 		}
-		if (sum<y_th && count>1){
+		if (sum<y_th && count>0){
 			y_axis_brank[brank_num].height = count;
 			//cout << "brank_num=" << brank_num << "y=" << y_axis_brank[brank_num].y << "hight=" << y_axis_brank[brank_num].height << endl;
 			brank_num++;
 			count = 0;
 		}
 	}
-	for (int num = 0; num < brank_num - 1; num++){
+	for (int num = 0; num < brank_num; num++){
 		if (y_axis_brank[num].y < (rough_cut_area_hight / 2) && (rough_cut_area_hight / 2)  < (y_axis_brank[num + 1].y + y_axis_brank[num + 1].height)){
 			cut->y = y_axis_brank[num].y + (y_axis_brank[num].height / 2);
 			cut->hight = y_axis_brank[num + 1].y + (y_axis_brank[num + 1].height / 2) - cut->y;
 			break;
 		}
+	}
+	ofs << "y_axis_brank" << endl;
+	for (int num = 0; num < brank_num+1; num++){
+		ofs << y_axis_brank[num].y << endl;
 	}
 
 	//cout << "y=" << y_axis_brank[num].y + (y_axis_brank[num].height / 2) << " , " << "hight=" << cut->hight << endl;
@@ -847,48 +910,74 @@ int cutout(IplImage* threshold_img, cutData *cut)
 	cvSetImageROI(threshold_img, cvRect(0, cut->y, rough_cut_area_hight, cut->hight));
 
 	/*x方向*/
+	x_th = 255 * cut->hight;
 	for (int i = 0; i < threshold_img->width; i++){
 		sum = 0;
 		for (int j = cut->y; j < cut->hight + cut->y; j++){
 			sum += (uchar)threshold_img->imageData[threshold_img->widthStep * j + i];
 		}
 		ofs << sum << endl;
-		if (sum == 255 * cut->hight){
-			count++;
-			flag = 1;
+		if (sum >= x_th){
+			if (count == 0){
+				bank[bcount].x = i;
+				pre_sum = sum;
+				count++;
+				//cout << "start" << endl;
+			}
+			else {
+				//cout << "count=" << count << endl;
+				if (i == (rough_cut_area_width - 1)){
+					bank[bcount].total = count;
+					//cout << "brank_num=" << brank_num << "y=" << y_axis_brank[brank_num].y << "hight=" << y_axis_brank[brank_num].height << endl;
+					//brank_num++;
+					count = 0;
+				}
+				count++;
+			}
 		}
-		else if (sum != 255 * cut->hight  && flag == 1){
+		if (sum<x_th && count>0){
 			bank[bcount].total = count;
-			count = 0;
-			bank[bcount].x = i;
+			//cout << "brank_num=" << brank_num << "y=" << y_axis_brank[brank_num].y << "hight=" << y_axis_brank[brank_num].height << endl;
 			bcount++;
-			flag = 0;
-		}
-		//右端の処理
-		if (i == threshold_img->width - 1 && flag == 1){
-			bank[bcount].total = count;
 			count = 0;
-			bank[bcount].x = i;
-			bcount++;
 		}
+
+		//if (sum == 255 * cut->hight){
+		//	count++;
+		//	flag = 1;
+		//}
+		//else if (sum != 255 * cut->hight  && flag == 1){
+		//	bank[bcount].total = count;
+		//	count = 0;
+		//	bank[bcount].x = i;
+		//	bcount++;
+		//	flag = 0;
+		//}
+		////右端の処理
+		//if (i == threshold_img->width - 1 && flag == 1){
+		//	bank[bcount].total = count;
+		//	count = 0;
+		//	bank[bcount].x = i;
+		//	bcount++;
+		//}
 	}
 	cvResetImageROI(threshold_img);
 	//cout << bcount << endl;
-	for (int i = 0; i < bcount; i++){
+	for (int i = 0; i < bcount+1; i++){
 		//cout << "x=" << bank[i].x << " , " << "total=" << bank[i].total << endl;
 		ofs << bank[i].x << " " << bank[i].total << endl;
 	}
 
 	//端を除外
-	if (bank[0].x - bank[0].total == 0) {
+	if (bank[0].x == 0) {
 		edge[0] = bank[0];
 		bank[0].total = 0;
 		bank[0].x = 0;
 	}
-	if (bank[bcount - 1].x == 199) {
-		edge[1] = bank[bcount - 1];
-		bank[bcount - 1].total = 0;
-		bank[bcount - 1].x = 0;
+	if (bank[bcount].x+bank[bcount].total == 199) {
+		edge[1] = bank[bcount];
+		bank[bcount].total = 0;
+		bank[bcount].x = 0;
 	}
 
 	//バブルソート
@@ -939,16 +1028,135 @@ int cutout(IplImage* threshold_img, cutData *cut)
 			break;
 		}
 	}
+
+	//ofs << "x_axise_data" << endl;
+	//
+	//x_th = 255 * cut->hight;
+	//for (int i = 0; i < threshold_img->width; i++){
+	//	sum = 0;
+	//	for (int j = cut->y; j < cut->hight + cut->y; j++){
+	//		sum += (uchar)threshold_img->imageData[threshold_img->widthStep * j + i];
+	//	}
+	//	ofs << sum << endl;
+	//	if (sum >= x_th){
+	//		if (count == 0){
+	//			x_axis_brank[brank_num].x = i;
+	//			pre_sum = sum;
+	//			count++;
+	//			//cout << "start" << endl;
+	//		}
+	//		else {
+	//			//cout << "count=" << count << endl;
+	//			if (i == (rough_cut_area_hight - 1)){
+	//				x_axis_brank[brank_num].width = count;
+	//				//cout << "brank_num=" << brank_num << "y=" << y_axis_brank[brank_num].y << "hight=" << y_axis_brank[brank_num].height << endl;
+	//				//brank_num++;
+	//				count = 0;
+	//			}
+	//			count++;
+	//		}
+	//	}
+	//	if (sum<x_th && count>0){
+	//		x_axis_brank[brank_num].width = count;
+	//		//cout << "brank_num=" << brank_num << "y=" << y_axis_brank[brank_num].y << "hight=" << y_axis_brank[brank_num].height << endl;
+	//		brank_num++;
+	//		count = 0;
+	//	}
+	//	//if (sum == 255 * cut->hight){
+	//	//	count++;
+	//	//	flag = 1;
+	//	//}
+	//	//else if (sum != 255 * cut->hight  && flag == 1){
+	//	//	bank[bcount].total = count;
+	//	//	count = 0;
+	//	//	bank[bcount].x = i;
+	//	//	bcount++;
+	//	//	flag = 0;
+	//	//}
+	//	////右端の処理
+	//	//if (i == threshold_img->width - 1 && flag == 1){
+	//	//	bank[bcount].total = count;
+	//	//	count = 0;
+	//	//	bank[bcount].x = i;
+	//	//	bcount++;
+	//	//}
+	//}
+	//cvResetImageROI(threshold_img);
+	////cout << bcount << endl;
+	//for (int num = 0; num < brank_num + 1; num++){
+	//	ofs << x_axis_brank[num].x << endl;
+	//}
+
+	////端を除外
+	//if (x_axis_brank[0].x - x_axis_brank[num].width == 0) {
+	//	edge1[0] = x_axis_brank[num];
+	//	x_axis_brank[0].width = 0;
+	//	x_axis_brank[0].x = 0;
+	//}
+	//if (x_axis_brank[brank_num-1].x == 199) {
+	//	edge1[1] = x_axis_brank[brank_num - 1];
+	//	x_axis_brank[brank_num - 1].width = 0;
+	//	x_axis_brank[brank_num - 1].x = 0;
+	//}
+
+	////バブルソート
+	//bobsort(x_axis_brank, brank_num);
+
+	////cout << "AfterSort" << endl;
+	//ofs << "afterSort" << endl;
+	//for (int i = 0; i < brank_num; i++){
+	//	//cout << "x=" << bank[i].x << " , " << "total=" << bank[i].total << endl;
+	//	ofs << x_axis_brank[i].x << " " << x_axis_brank[i].width << endl;
+	//}
+	////startの決定
+	//start.width = 0;
+	//start.x = 0;
+	//if (x_axis_brank[0].x < rough_cut_area_width / 2){
+	//	start = x_axis_brank[0];
+	//}
+	//for (i = 1; i < brank_num; i++){
+	//	sub = x_axis_brank[i - 1].width - x_axis_brank[i].width;
+	//	half = x_axis_brank[i].width / 2.0;
+	//	//cout << sub << "," << half << "," << start.x << "," << bank[i].x << endl;
+	//	if (sub < half && start.x < x_axis_brank[i].x && rough_cut_area_width / 2> x_axis_brank[i].x){
+	//		//cout << "1" << endl;
+	//		start = x_axis_brank[i];
+	//	}
+	//	else if (sub >= half){
+	//		break;
+	//	}
+	//}
+	////cout << "start=" << start.x << " , " << "end=" << end.x << endl;
+
+	//if (start.x == 0 || start.x>rough_cut_area_width / 2) start = edge1[0];
+	////endの決定
+	//end.width = 0;
+	//end.x = rough_cut_area_width;
+	//if (x_axis_brank[0].x > rough_cut_area_width / 2){
+	//	end = x_axis_brank[0];
+	//}
+	//for (i = 1; i < brank_num; i++){
+	//	sub = x_axis_brank[i - 1].width - x_axis_brank[i].width;
+	//	half = x_axis_brank[i].width / 2.0;
+	//	//cout << sub << "," << half << "," << start.x << "," << bank[i].x << endl;
+	//	if (sub < half && end.x > x_axis_brank[i].x && rough_cut_area_width / 2< x_axis_brank[i].x){
+	//		//cout << "1" << endl;
+	//		end = x_axis_brank[i];
+	//	}
+	//	else if (sub >= half){
+	//		break;
+	//	}
+	//}
 	//cout << "start=" << start.x << " , " << "end=" << end.x << endl;
 
 	if (end.x == rough_cut_area_width || end.x<rough_cut_area_width / 2) end = edge[1];
 	//cout << "start=" << start.x << " , " << "end=" << end.x << endl;
 
-	cut->x = start.x - 3;
-	cut->width = end.x - start.x + 3;
+	cut->x = start.x + start.total/2;
+	cut->width = (end.x + end.total/2) - cut->x;
 	//cout << "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa" << endl;
 
-	//cout << "CutRange " << "x=" << cut->x << " , " << "y=" << cut->y << " , " << "width=" << cut->width << " , " << "hight=" << cut->hight << endl;
+	ofs << "CutRange " << "x=" << cut->x << " , " << "y=" << cut->y << " , " << "width=" << cut->width << " , " << "hight=" << cut->hight << endl;
 
 	return 0;
 }
@@ -2728,25 +2936,34 @@ void getHog_another(Mat inImg, float* vec_tmp){
 
 int startCheckMeanShift(Mat inImg)
 {
-	int colorCount = 0;
+	int colorCount_RGB = 0,colorCount_HSV=0;
 	Mat hsv;
 	cvtColor(inImg, hsv, cv::COLOR_BGR2HSV);
 	int ch[] = { 0, 0 };
 	Mat hue(hsv.size(), hsv.depth());
 	mixChannels(&hsv, 1, &hue, 1, ch, 1);
-	for (int i = 0; i < hue.rows; i++){
-		for (int j = 0; j < hue.cols; j++){
-			for (int c = 0; c < hue.channels(); ++c){
-				//cout << (int)hue.data[i * hue.step + j * hue.elemSize() + c] << endl;
-				if ((int)hue.data[i * hue.step + j * hue.elemSize() + c] < 11){
-					colorCount++;
-				}
+	for (int i = 0; i < inImg.rows; i++){
+		for (int j = 0; j < inImg.cols; j++){
+			if (/*(int)inImg.data[i * inImg.step + j * inImg.elemSize()] == 0  &&*/ (int)inImg.data[i * inImg.step + j * inImg.elemSize() + 2]>200){
+					colorCount_RGB++;
 			}
 		}
 	}
+	//if (400 < colorCount_RGB){
+		for (int i = 0; i < hue.rows; i++){
+			for (int j = 0; j < hue.cols; j++){
+				for (int c = 0; c < hue.channels(); ++c){
+					//cout << (int)hue.data[i * hue.step + j * hue.elemSize() + c] << endl;
+					if ((int)hue.data[i * hue.step + j * hue.elemSize() + c] < 11){
+						colorCount_HSV++;
+					}
+				}
+			}
+		}
+	//}
 	//getchar();
-	//cout << colorCount << endl;
-	if (colorCount < 20000){
+	//cout << colorCount_RGB << endl;
+	if (colorCount_HSV < 20000){
 		return -1;
 	}
 	else {
@@ -2783,4 +3000,45 @@ inline void InitRand()
 {
 	//cout << now << endl;
 	srand((unsigned int)now);
+}
+
+int checkWordForm(char* ocrWord, char* tranceWord)
+{
+	//単語数カウント
+	
+	const char *p = tranceWord;
+	int count = 0;
+	int for_count=0;
+	int pre_in_word = 0;
+	//cout << strlen(tranceWord) << endl;
+	if (*p != ' ' && *p != '.') {
+		count++;
+	}
+	for (int in_word = 1; *p; p++) {
+		if (*p == ' ' || *p == '.') {
+			in_word = 0;
+		}
+		else {
+			in_word = 1;
+		}
+		if (pre_in_word == 0 && in_word == 1){
+			if (for_count != 0) {
+				count++;
+			}
+		}
+		for_count++;
+		pre_in_word = in_word;
+		//cout << in_word << endl;
+	}
+	//cout << "①単語数= " << count << endl;
+	//cout << "単語一致" << strcmp(ocrWord, tranceWord) << endl;
+	if (count == 1 && strcmp(ocrWord, tranceWord) != 0){
+		return 1;
+	}
+	else if (count >1 || strcmp(ocrWord, tranceWord) == 0){
+		return -1;
+	}
+	else {
+		return 0;
+	}
 }
