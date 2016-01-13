@@ -154,7 +154,7 @@ int select_object;
 //拡大倍率
 #define Resize_Rate 4
 
-string wordlist[300];
+string wordlist[400];
 
 int main()
 {
@@ -172,7 +172,7 @@ int main()
 	//CAM("test");
 	//cout << checkWordForm("test ", "  test t") << endl;
 
-	int wordNum = readWordList("print_wordList.txt");
+	int wordNum = readWordList("book2_wordList.txt");
 	InitRand();
 	String targetWord;
 
@@ -192,6 +192,7 @@ int main()
 	int stopCount = 0;
 	int loopCount = 0;
 	int okCount = 0;
+	int tryCount=0;
 	int ch;
 
 	//ARの初期設定
@@ -206,7 +207,8 @@ int main()
 
 	//カメラの初期設定(画像サイズの設定)
 	cv::VideoCapture cap;
-	cv::Size cap_size(640, 480);
+	//cv::Size cap_size(640, 480);
+	cv::Size cap_size(960, 720);
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, cap_size.width);
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, cap_size.height);
 
@@ -322,7 +324,7 @@ int main()
 			//二値化
 			IplImage *threshold_img = cvCreateImage(cvGetSize(rough_cut_img), IPL_DEPTH_8U, 1);
 			//threshold(rough_cut_img, threshold_img);
-			adaptiveThreshold((Mat)rough_cut_img, (Mat)threshold_img, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 7, 8);
+			adaptiveThreshold((Mat)rough_cut_img, (Mat)threshold_img, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY,7 /*11*/,8/*5*/);
 			imwrite("threshold.png", (Mat)threshold_img);
 			//cvNamedWindow("rough_th");
 			//cvShowImage("rough_th", threshold_img);
@@ -384,50 +386,66 @@ int main()
 				strtok(translate_Text_View, "\n\0");
 				sprintf_s(total_Text_View, 50, "%s : %s", result_Text, translate_Text_View);
 				//waitKey();
-				ofs << "targetWord:" << targetWord << "," << "tesseract:" << result_Text << "," << "Bing Translator:" << translate_Text << endl;
 				//ofs << "targetWord:" << targetWord << "," << "tesseractUnsharp:" << result_TextUnsharp << "," << "Bing TranslatorUnsharp:" << translate_TextUnsharp << endl;
 				if (checkWordForm(result_Text, translate_Text) == 1){
 					cout << "yes or no" << endl;
 					char check[10];
 					scanf_s("%s", check, 10);
 					if (strcmp(check, "y") == 0){
+						if (tryCount == 0){
+							ofs << "1" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#1" << "#1" << endl;
+						}
+						else if (tryCount != 0 && tryCount < 4){
+							ofs << "1" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#1" << endl;
+						}
+						else {
+							ofs << "1" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#0" << endl;
+						}
 						cout << "Next_target_word : ";
 						targetWord = randomWordOut(wordNum);
 						okCount++;
+						tryCount = 0;
 					}
 					else {
+						ofs << "0" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" <<  "#0" << endl;
 						cout << "続ける" << endl;
+						tryCount++;
 					}
 				}
 				else {
-					ofs << "targetWord:" << targetWord << "," << "tesseract:" << result_Text << "," << "Bing Translator:" << translate_Text << endl;
 					cout << "翻訳失敗(もう一度)" << endl;
 					cout << "あきらめる　[y/n]" << endl;
 					char key[10];
 					scanf_s("%s",key , 10);
 					if (strcmp(key, "y")==0){
+						ofs << "1" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#0" << endl;
 						cout << "Next_target_word : ";
 						targetWord = randomWordOut(wordNum);
+						tryCount = 0;
 						okCount++;
 					}
 					else {
+						ofs << "0" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#0" << endl;
 						cout << "続ける" << endl;
+						tryCount++;
 					}
 				}
 			}
 			else {
 				cout << "切りだし失敗" << endl;
-				ofs << "targetWord:" << targetWord << "," << "tesseract:" <<"切りだし失敗" << "," << "Bing Translator:" << "切りだし失敗" << endl;
 				cout << "あきらめる　[y/n]" << endl;
 				char key[10];
 				scanf_s("%s", key, 10);
 				if (strcmp(key, "y") == 0){
+					ofs << "1" << "#" << targetWord << "#" << "CutOutFailed" << "#" << "CutOutFailed" << "#0" << "#0" << endl;
 					cout << "Next_target_word : ";
 					targetWord = randomWordOut(wordNum);
 					okCount++;
 				}
 				else {
+					ofs << "0" << "#" << targetWord << "#" << "CutOutFailed" << "#" << "CutOutFailed" << "#0" << "#0" << endl;
 					cout << "続ける" << endl;
+					tryCount++;
 				}
 			}
 			//sprintf(saveInDirectoryName, "../%02d", loopCount + 1);
@@ -435,7 +453,7 @@ int main()
 			SetCurrentDirectory("..");
 			stopCount = 0;
 			loopCount++;
-			cout << "okCount : " << okCount << endl;
+			cout << "okCount : " << okCount << "tryCount : " << tryCount +1 << endl;
 		}
 		//表示
 		//cout << translate_Text_view << endl;
