@@ -109,6 +109,7 @@ int readWordList(char* wordListName);
 String randomWordOut(int maxWordNum);
 inline void InitRand();
 int checkWordForm(char* ocrWord, char* tranceWord);
+void getHist();
 
 /*時間の取得*/
 time_t now = time(NULL);
@@ -170,6 +171,7 @@ int main()
 	//init_Hogdata();
 	//get_Boost();
 	//CAM("test");
+	getHist();
 	//cout << checkWordForm("test ", "  test t") << endl;
 
 	int wordNum = readWordList("book2_wordList.txt");
@@ -3095,5 +3097,33 @@ int checkWordForm(char* ocrWord, char* tranceWord)
 	}
 	else {
 		return 0;
+	}
+}
+
+void getHist()
+{
+	int x, y;
+	uchar p[3];
+	IplImage *img;
+	ofstream ofs("meanHisthalf25.txt", std::ios::out | std::ios::app);
+	unsigned int sum = 0;
+	double ave=0.0;
+	char fileName[300];
+
+	for (int i = 0; i < 50; i++){
+		sprintf(fileName, "print25_half_20160106/%02d_20160106/rough_cut.png", i+1);
+		img = cvLoadImage(fileName, CV_LOAD_IMAGE_GRAYSCALE);
+		// (1)画素値（R,G,B）を順次取得し，変更する
+		for (y = 0; y < img->height; y++) {
+			for (x = 0; x < img->width; x++) {
+				/* 画素値を直接操作する一例 */
+				sum = sum + (uchar)img->imageData[img->widthStep * y + x ];   
+				//cout << (uchar)img->imageData[img->widthStep * y + x] << endl;
+			}
+		}
+		ave = sum / (img->height*img->width);
+		ofs << ave << endl;
+		sum = 0;
+		cvReleaseImage(&img);
 	}
 }
