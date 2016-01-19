@@ -183,7 +183,7 @@ int main()
 	CvMat image_points;
 	CvMat point_counts;
 	char *translate_Text_View = " ";
-	char total_Text_View[50] = " ";
+	char total_Text_View[500] = " ";
 	char str[100];
 	Point  *Notice_coordinates;//特定単語座標
 	Point  *preNotice_coordinates;//１つ前の特定単語座標
@@ -288,6 +288,7 @@ int main()
 		/*cout << "stopCount = " <<stopCount << endl;
 		cout << "座標x" << Notice_coordinates->x << "座標y" << Notice_coordinates->y << endl;*/
 		if (stopCount == 15){
+			cout << "okCount : " << okCount << "tryCount : " << tryCount + 1 << endl;
 			sprintf(saveInDirectoryName, "%02d", loopCount + 1);
 			makeDirectory(saveInDirectoryName);
 			//グレースケール化
@@ -332,7 +333,7 @@ int main()
 			//単語の切り出し
 			IplImage *cutOut_img = cvCreateImage(cvGetSize(threshold_img), IPL_DEPTH_8U, 1);
 			cutout(threshold_img, &cut);
-			if (cut.hight > 0 && cut.width > 0 && cut.x< threshold_img->width && cut.y < threshold_img->height && cut.x + cut.width >= (int)(cut.width>0) && cut.y + cut.hight >= (int)(cut.hight>0)){
+			if (cut.hight > 0 && cut.width > 0 && cut.x< threshold_img->width && cut.y < threshold_img->height && cut.x + cut.width >= (int)(cut.width>0) && cut.y + cut.hight >= (int)(cut.hight>0) ){
 				cvSetImageROI(threshold_img, cvRect(cut.x, cut.y, cut.width, cut.hight));
 				cutOut_img = cvCreateImage(cvGetSize(threshold_img), IPL_DEPTH_8U, 1);
 				cvCopy(threshold_img, cutOut_img);
@@ -381,13 +382,14 @@ int main()
 				ZeroMemory(translate_Text_sjis, nSize + 1);
 				ConvUtf8toSJis((BYTE*)(translate_Text), translate_Text_sjis, &nSize);
 				translate_Text_View = (char *)translate_Text_sjis;
-				cout << translate_Text_View << endl;
+				//cout << translate_Text_View << endl;
 				strtok(result_Text, "\n\0");
 				strtok(translate_Text_View, "\n\0");
-				sprintf_s(total_Text_View, 50, "%s : %s", result_Text, translate_Text_View);
+				sprintf_s(total_Text_View, 500, "%s : %s", result_Text, translate_Text_View);
 				//waitKey();
 				//ofs << "targetWord:" << targetWord << "," << "tesseractUnsharp:" << result_TextUnsharp << "," << "Bing TranslatorUnsharp:" << translate_TextUnsharp << endl;
 				if (checkWordForm(result_Text, translate_Text) == 1){
+					cout << targetWord << " : " << result_Text << " : " << translate_Text_View << endl;
 					cout << "yes or no" << endl;
 					char check[10];
 					scanf_s("%s", check, 10);
@@ -407,17 +409,26 @@ int main()
 						tryCount = 0;
 					}
 					else {
-						ofs << "0" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" <<  "#0" << endl;
-						cout << "続ける" << endl;
-						tryCount++;
+						if (tryCount == 3){
+							ofs << "1" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#0" << endl;
+							cout << "Next_target_word : ";
+							targetWord = randomWordOut(wordNum);
+							tryCount = 0;
+							okCount++;
+						}
+						else {
+							ofs << "0" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#0" << endl;
+							//cout << "続ける" << endl;
+							tryCount++;
+						}
+						//ofs << "0" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" <<  "#0" << endl;
+						//cout << "続ける" << endl;
+						//tryCount++;
 					}
 				}
 				else {
 					cout << "翻訳失敗(もう一度)" << endl;
-					cout << "あきらめる　[y/n]" << endl;
-					char key[10];
-					scanf_s("%s",key , 10);
-					if (strcmp(key, "y")==0){
+					if (tryCount == 3){
 						ofs << "1" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#0" << endl;
 						cout << "Next_target_word : ";
 						targetWord = randomWordOut(wordNum);
@@ -425,35 +436,61 @@ int main()
 						okCount++;
 					}
 					else {
-						ofs << "0" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#0" << endl;
-						cout << "続ける" << endl;
-						tryCount++;
+							ofs << "0" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#0" << endl;
+							//cout << "続ける" << endl;
+							tryCount++;
 					}
+					//cout << "あきらめる　[y/n]" << endl;
+					//char key[10];
+					//scanf_s("%s",key , 10);
+					//if (strcmp(key, "y")==0){
+					//	ofs << "1" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#0" << endl;
+					//	cout << "Next_target_word : ";
+					//	targetWord = randomWordOut(wordNum);
+					//	tryCount = 0;
+					//	okCount++;
+					//}
+					//else {
+					//	ofs << "0" << "#" << targetWord << "#" << result_Text << "#" << translate_Text << "#0" << "#0" << endl;
+					//	cout << "続ける" << endl;
+					//	tryCount++;
+					//}
 				}
 			}
 			else {
 				cout << "切りだし失敗" << endl;
-				cout << "あきらめる　[y/n]" << endl;
-				char key[10];
-				scanf_s("%s", key, 10);
-				if (strcmp(key, "y") == 0){
+				if (tryCount == 3){
 					ofs << "1" << "#" << targetWord << "#" << "CutOutFailed" << "#" << "CutOutFailed" << "#0" << "#0" << endl;
 					cout << "Next_target_word : ";
 					targetWord = randomWordOut(wordNum);
 					okCount++;
+					tryCount = 0;
 				}
 				else {
 					ofs << "0" << "#" << targetWord << "#" << "CutOutFailed" << "#" << "CutOutFailed" << "#0" << "#0" << endl;
-					cout << "続ける" << endl;
+					//cout << "続ける" << endl;
 					tryCount++;
 				}
+				//cout << "あきらめる　[y/n]" << endl;
+				//char key[10];
+				//scanf_s("%s", key, 10);
+				//if (strcmp(key, "y") == 0){
+				//	ofs << "1" << "#" << targetWord << "#" << "CutOutFailed" << "#" << "CutOutFailed" << "#0" << "#0" << endl;
+				//	cout << "Next_target_word : ";
+				//	targetWord = randomWordOut(wordNum);
+				//	okCount++;
+				//}
+				//else {
+				//	ofs << "0" << "#" << targetWord << "#" << "CutOutFailed" << "#" << "CutOutFailed" << "#0" << "#0" << endl;
+				//	cout << "続ける" << endl;
+				//	tryCount++;
+				//}
 			}
 			//sprintf(saveInDirectoryName, "../%02d", loopCount + 1);
 			//_chdir(saveInDirectoryName);
 			SetCurrentDirectory("..");
 			stopCount = 0;
 			loopCount++;
-			cout << "okCount : " << okCount << "tryCount : " << tryCount +1 << endl;
 		}
 		//表示
 		//cout << translate_Text_view << endl;
@@ -3048,7 +3085,7 @@ int checkWordForm(char* ocrWord, char* tranceWord)
 		pre_in_word = in_word;
 		//cout << in_word << endl;
 	}
-	//cout << "①単語数= " << count << endl;
+	cout << "単語数= " << count << endl;
 	//cout << "単語一致" << strcmp(ocrWord, tranceWord) << endl;
 	if (count == 1 && strcmp(ocrWord, tranceWord) != 0){
 		return 1;
